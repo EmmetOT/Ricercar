@@ -123,8 +123,28 @@ namespace Ricercar
             if (!IsActive)
                 return;
 
-            if (m_attachedPoint != default && m_rotateToAttachPoint)
-                SetRotation(-Vector2.SignedAngle(Vector2.up, (m_attachedPoint - m_sourceRigidbody.transform.position).normalized));
+            int indexOne = m_rope.solverIndices[0];
+            int indexTwo = m_rope.solverIndices[1];
+            int indexThree = m_rope.solverIndices[2];
+
+            Vector3 posOne = m_solver.positions[indexOne];
+            Vector3 posTwo = m_solver.positions[indexTwo];
+            Vector3 posThree = m_solver.positions[indexThree];
+            
+            Vector3 dir1 = (posTwo - posOne).normalized;
+            Vector3 dir2 = (posThree - posOne).normalized;
+            Vector3 finalDir = (m_attachedPoint - m_sourceRigidbody.transform.position).normalized;
+
+            Vector3 dir = (dir1 + finalDir * 2).normalized;
+
+            Debug.DrawLine(transform.position, transform.position + dir * 10, Color.cyan, Time.deltaTime);
+
+            SetRotation(-Vector2.SignedAngle(Vector2.up, dir));
+
+            //if (m_attachedPoint != default && m_rotateToAttachPoint)
+            //{
+            //    SetRotation(-Vector2.SignedAngle(Vector2.up, (m_attachedPoint - m_sourceRigidbody.transform.position).normalized));
+            //}
 
             if (m_tightenAfterLaunch)
                 m_cursor.ChangeLength(Mathf.Lerp(m_rope.restLength, m_desiredRopeLength, m_rope.restLength * m_ropeSizeChangeSpeed * deltaTime));

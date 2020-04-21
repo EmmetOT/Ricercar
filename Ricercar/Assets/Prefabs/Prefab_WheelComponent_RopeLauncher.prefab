@@ -61,7 +61,7 @@ MonoBehaviour:
   m_tightenAfterLaunch: 1
   m_ropeSizeChangeSpeed: 300
   m_ropeTightenTarget: 0.8
-  m_ropeResolution: 0.01
+  m_ropeResolution: 0.04
   m_ropeThickness: 0.04
   m_rotateToAttachPoint: 1
   m_debugBreakOnLaunch: 0
@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 958c969cfb16745f192d4d7bd28b7178, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  decimation: 1
+  decimation: 0
   smoothing: 3
   twist: 0
 --- !u!114 &480653021905748647
