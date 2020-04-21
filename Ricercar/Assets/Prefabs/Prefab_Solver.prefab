@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4562253002070243485}
   - component: {fileID: 4562253002070243474}
+  - component: {fileID: 45514946}
   m_Layer: 0
   m_Name: Prefab_Solver
   m_TagString: Untagged
@@ -44,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d174fab52f0c4b8399f25d5c3ea524c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  simulateWhenInvisible: 1
+  simulateWhenInvisible: 0
   parameters:
     mode: 1
     interpolation: 1
@@ -58,14 +59,14 @@ MonoBehaviour:
   worldAngularInertiaScale: 0
   distanceConstraintParameters:
     evaluationOrder: 0
-    iterations: 40
+    iterations: 9
     SORFactor: 0.3
     enabled: 1
   bendingConstraintParameters:
     evaluationOrder: 1
     iterations: 3
     SORFactor: 1
-    enabled: 1
+    enabled: 0
   particleCollisionConstraintParameters:
     evaluationOrder: 0
     iterations: 3
@@ -85,7 +86,7 @@ MonoBehaviour:
     evaluationOrder: 1
     iterations: 6
     SORFactor: 1
-    enabled: 1
+    enabled: 0
   skinConstraintParameters:
     evaluationOrder: 0
     iterations: 3
@@ -393,6 +394,21 @@ MonoBehaviour:
   - {r: 0, g: 0, b: 0, a: 0}
   - {r: 0, g: 0, b: 0, a: 0}
   - {r: 0, g: 0, b: 0, a: 0}
+--- !u!114 &45514946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4562253002070243475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 434ec3c1822e84ae79a7f64f950b1bf9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  solvers:
+  - {fileID: 4562253002070243474}
+  substeps: 3
 --- !u!1001 &7857619632549973805
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -402,8 +418,13 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
         type: 3}
+      propertyPath: m_wheels.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
       propertyPath: m_wheels.Array.data[0].m_componentProximity
-      value: 90
+      value: 360
       objectReference: {fileID: 0}
     - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
         type: 3}
@@ -415,15 +436,35 @@ PrefabInstance:
       propertyPath: m_solver
       value: 
       objectReference: {fileID: 4562253002070243474}
+    - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
+      propertyPath: m_wheels.Array.data[0].m_type
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
+      propertyPath: m_wheels.Array.data[1].m_type
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
+      propertyPath: m_wheels.Array.data[2].m_componentCount
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934547499753476576, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
+      propertyPath: m_wheels.Array.data[2].m_componentProximity
+      value: 360
+      objectReference: {fileID: 0}
     - target: {fileID: 5934547499753476578, guid: db9d8c2ceae16084c84537868e6674f3,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.06
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5934547499753476578, guid: db9d8c2ceae16084c84537868e6674f3,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.6
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 5934547499753476578, guid: db9d8c2ceae16084c84537868e6674f3,
         type: 3}
@@ -474,6 +515,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Prefab_Car
+      objectReference: {fileID: 0}
+    - target: {fileID: 5934547499753476590, guid: db9d8c2ceae16084c84537868e6674f3,
+        type: 3}
+      propertyPath: m_Mass
+      value: 300
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: db9d8c2ceae16084c84537868e6674f3, type: 3}
