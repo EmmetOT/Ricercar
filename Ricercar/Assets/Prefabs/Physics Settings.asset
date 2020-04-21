@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31b49448656749d4e8b343990ac8ee7c, type: 3}
+  m_Name: Physics Settings
+  m_EditorClassIdentifier: Assembly-CSharp:Ricercar:PhysiosSettings
+  m_carPrefabRigidbody: {fileID: 5934547499753476590, guid: db9d8c2ceae16084c84537868e6674f3,
+    type: 3}
+  m_ropeLauncherPrefab: {fileID: -1710211634298208096, guid: 6198755776edb924e958284ad06efcf5,
+    type: 3}
+  m_obiSolver: {fileID: 4562253002070243474, guid: 2765a340fd9aa3645bf38590687d9255,
+    type: 3}
+  m_obiFixedUpdater: {fileID: 4562253002070243484, guid: 2765a340fd9aa3645bf38590687d9255,
+    type: 3}
+  m_physicsTimestep: 0.01
+  m_substepUnityPhysics: 1
+  m_solverSubsteps: 9
+  m_distanceConstraintEvaluationOrder: 0
+  m_distanceContraintIterations: 40
+  m_carRigidbodyMass: 200
+  m_carLinearDrag: 0.4
+  m_carAngularDrag: 0.05
+  m_tightenAfterLaunch: 1
+  m_ropeSizeChangeSpeed: 300
+  m_ropeTightenTarget: 0.8
+  m_ropeResolution: 0.3
+  m_ropeThickness: 0.04
