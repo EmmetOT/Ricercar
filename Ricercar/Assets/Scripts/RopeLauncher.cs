@@ -12,12 +12,15 @@ namespace Ricercar
         private Transform m_transform;
 
         [SerializeField]
+        [ReadOnly]
+        private Color m_currentColour;
+
+        [SerializeField]
         private SpriteRenderer m_aimSpriteRenderer;
         public SpriteRenderer AimSpriteRenderer => m_aimSpriteRenderer;
 
         [SerializeField]
         private ObiRope m_rope;
-        private ObiRope Rope => m_rope;
 
         [SerializeField]
         private ObiCollider2D m_ropeSourceObiCollider;
@@ -64,7 +67,23 @@ namespace Ricercar
         public float RopeThickness { get => m_ropeThickness; set => SetRopeThickness(value); }
 
         [SerializeField]
+        [BoxGroup("Automatic Rotation")]
         private bool m_rotateToAttachPoint = true;
+
+        [SerializeField]
+        [ShowIf("m_rotateToAttachPoint")]
+        [MinValue(0f)]
+        [BoxGroup("Automatic Rotation")]
+        private float m_minDistanceBeforeLerp;
+
+        [SerializeField]
+        [ShowIf("m_rotateToAttachPoint")]
+        [Range(0f, 1f)]
+        [BoxGroup("Automatic Rotation")]
+        [Tooltip("If rotating the launch source, choose how much to prefer to rotate towards the rope's immediate direction at the launch source, versus the total direction.")]
+        private float m_sourceDirectionToAttachDirectionLerp = 0.666f;
+
+        public float Angle { get; private set; }
 
         private Rigidbody2D m_sourceRigidbody;
 
@@ -87,6 +106,31 @@ namespace Ricercar
 
         private float m_desiredRopeLength = -1f;
 
+        private Material m_material;
+
+        public Vector3 DirectionAtSource
+        {
+            get
+            {
+                if (!IsActive)
+                    return default;
+
+                return (m_solver.positions[m_rope.solverIndices[2]] - m_solver.positions[m_rope.solverIndices[0]]).normalized;
+            }
+
+        }
+
+        public Vector3 DirectionToAttachPoint
+        {
+            get
+            {
+                if (!IsActive)
+                    return default;
+
+                return  (m_attachedPoint - m_sourceRigidbody.transform.position).normalized;
+            }
+        }
+
         public Vector3 GetSourcePosition()
         {
             return m_transform.position + m_transform.up * m_distanceFromCentre;
@@ -105,7 +149,8 @@ namespace Ricercar
 
             gameObject.SetActive(true);
 
-            m_obiRopeMeshRenderer.material = material;
+            m_material = new Material(material);
+            m_obiRopeMeshRenderer.material = m_material;
 
             m_ropeBlueprint = ScriptableObject.CreateInstance<ObiRopeBlueprint>();
             m_ropeBlueprint.resolution = m_ropeResolution;
@@ -118,33 +163,35 @@ namespace Ricercar
             SetRotation(0f);
         }
 
+        private void OnDestroy()
+        {
+            Destroy(m_material);
+        }
+
         public void ManualUpdate(float deltaTime)
         {
             if (!IsActive)
                 return;
 
-            int indexOne = m_rope.solverIndices[0];
-            int indexTwo = m_rope.solverIndices[1];
-            int indexThree = m_rope.solverIndices[2];
+            if (m_attachedPoint != default && m_rotateToAttachPoint)
+            {
+                float distToAttachPoint = Vector3.Distance(m_attachedPoint, m_sourceRigidbody.transform.position);
 
-            Vector3 posOne = m_solver.positions[indexOne];
-            Vector3 posTwo = m_solver.positions[indexTwo];
-            Vector3 posThree = m_solver.positions[indexThree];
-            
-            Vector3 dir1 = (posTwo - posOne).normalized;
-            Vector3 dir2 = (posThree - posOne).normalized;
-            Vector3 finalDir = (m_attachedPoint - m_sourceRigidbody.transform.position).normalized;
+                Vector3 dir;
+                if (distToAttachPoint < m_minDistanceBeforeLerp)
+                {
+                    dir = Vector3.Lerp(DirectionAtSource, DirectionToAttachPoint, m_sourceDirectionToAttachDirectionLerp);
+                    Debug.DrawLine(m_sourceRigidbody.transform.position, m_sourceRigidbody.transform.position + dir * 5f, Color.yellow, Time.deltaTime);
+                }
+                else
+                {
+                    dir = DirectionAtSource;
 
-            Vector3 dir = (dir1 + finalDir * 2).normalized;
+                    Debug.DrawLine(m_sourceRigidbody.transform.position, m_sourceRigidbody.transform.position + dir * 5f, Color.green, Time.deltaTime);
+                }
 
-            Debug.DrawLine(transform.position, transform.position + dir * 10, Color.cyan, Time.deltaTime);
-
-            SetRotation(-Vector2.SignedAngle(Vector2.up, dir));
-
-            //if (m_attachedPoint != default && m_rotateToAttachPoint)
-            //{
-            //    SetRotation(-Vector2.SignedAngle(Vector2.up, (m_attachedPoint - m_sourceRigidbody.transform.position).normalized));
-            //}
+                SetRotation(-Vector2.SignedAngle(Vector2.up, dir));
+            }
 
             if (m_tightenAfterLaunch)
                 m_cursor.ChangeLength(Mathf.Lerp(m_rope.restLength, m_desiredRopeLength, m_rope.restLength * m_ropeSizeChangeSpeed * deltaTime));
@@ -152,9 +199,6 @@ namespace Ricercar
 
         public bool CanLaunch(out Vector3 pos, out Collider2D collider)
         {
-            pos = Vector3.zero;
-            collider = null;
-
             Vector3 source = m_transform.position + m_transform.up * m_distanceFromCentre;
             Vector3 direction = m_transform.up;
 
@@ -180,9 +224,15 @@ namespace Ricercar
             return true;
         }
 
-        public void SetSpriteColour(Color col)
+        public void SetColour(Color col)
         {
-            m_aimSpriteRenderer.color = col;
+            if (m_currentColour == col)
+                return;
+
+            m_currentColour = col;
+
+            m_material.color = m_currentColour;
+            m_aimSpriteRenderer.color = m_currentColour;
         }
 
         public void SetRotation(float angle)
@@ -190,7 +240,8 @@ namespace Ricercar
             if (m_transform == null)
                 m_transform = transform;
 
-            Vector3 eulerAngles = Vector3.back * angle;
+            Angle = angle;
+            Vector3 eulerAngles = Vector3.back * Angle;
 
             m_transform.localPosition = Utils.RotateAround(Vector3.up * m_distanceFromCentre, Vector3.zero, eulerAngles);
             m_transform.localEulerAngles = eulerAngles;
@@ -220,6 +271,7 @@ namespace Ricercar
 
         public void DetachRope()
         {
+            Angle = 0f;
             m_desiredRopeLength = -1f;
             m_currentHitCount = 0;
             m_rope.ropeBlueprint = null;
@@ -329,6 +381,9 @@ namespace Ricercar
 
         public void SetRopeLength(float newLength)
         {
+            if (!m_rope.isLoaded)
+                return;
+
             m_cursor.ChangeLength(newLength);
         }
     }

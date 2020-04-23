@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NaughtyAttributes;
 using UnityEngine;
+using System.Linq;
 
 namespace Ricercar
 {
@@ -42,9 +43,22 @@ namespace Ricercar
         private Transform m_transform;
         private Camera m_camera;
 
-        private int m_currentWheel = 0;
+        private int m_currentWheelIndex = 0;
 
         private ObiRopeBlueprint m_ropeBlueprint;
+
+        /// <summary>
+        /// Enumerate all wheels that are at the active wheel index or are set to 'always active.'
+        /// </summary>
+        public IEnumerable<Wheel> ActiveWheels
+        {
+            get
+            {
+                for (int i = 0; i < m_currentWheels.Count; i++)
+                    if (i == m_currentWheelIndex || m_wheels[i].AlwaysActive)
+                        yield return m_currentWheels[i];
+            }
+        }
 
         private void Awake()
         {
@@ -60,16 +74,24 @@ namespace Ricercar
 
             m_transform = transform;
             m_camera = Camera.main;
-            
+
+            m_currentWheelIndex = 0;
+
+            if (m_wheels.Length > 1)
+            {
+                do
+                {
+                    m_currentWheelIndex = m_currentWheelIndex.Increment(m_wheels);
+                } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheelIndex != 0);
+            }
+
             for (int i = 0; i < m_wheels.Length; i++)
             {
-                Debug.Log(i + ") " + m_wheels[i].Type.ToString() + ", " + m_wheels[i].ComponentCount.ToString());
-
                 Wheel wheel = m_wheelPool.GetNew(m_wheels[i].Type);
                 wheel.transform.SetParent(m_transform);
                 wheel.transform.localPosition = Vector3.zero;
                 wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour, m_unselectedColour, i, m_solver, m_material, m_rigidbody, m_collider);
-                wheel.SetSelected(i == m_currentWheel);
+                wheel.SetSelected(i == m_currentWheelIndex);
 
                 m_currentWheels.Add(wheel);
             }
@@ -85,13 +107,25 @@ namespace Ricercar
             for (int i = 0; i < m_currentWheels.Count; i++)
                 m_currentWheels[i].ManualUpdate(Time.deltaTime);
 
-            if (GetCurrentHeldDirection() == Vector2.zero)
-            {
-                float angle = Vector3.SignedAngle(Vector3.up, GetCurrentMouseAim(), Vector3.back);
+            Vector2 keyboardAim = GetCurrentKeyboardAim();
+            Vector2 mouseAim = GetCurrentMouseAim();
 
-                m_currentWheels[m_currentWheel].SetAim(angle);
+            float keyboardAngle = -Vector2.SignedAngle(Vector2.down, keyboardAim);
+            float mouseAngle = -Vector2.SignedAngle(Vector2.up, mouseAim);
+
+            for (int i = 0; i < m_currentWheels.Count; i++)
+            {
+                if (i != m_currentWheelIndex && !m_wheels[i].AlwaysActive)
+                    continue;
+
+                Wheel wheel = m_currentWheels[i];
+
+                wheel.SetAim(m_wheels[i].Control == Wheel.Control.KEYBOARD ? keyboardAngle : mouseAngle);
+
+                if (m_wheels[i].Control == Wheel.Control.MOUSE)
+                    wheel.OnScroll(Input.mouseScrollDelta.y * m_ropeScrollSpeed * Time.deltaTime);
             }
-            
+
             if (Input.GetMouseButtonUp(0))
                 m_primaryFire = true;
             else if (Input.GetMouseButtonUp(1))
@@ -104,50 +138,47 @@ namespace Ricercar
                 DecrementCurrentWheel();
             else if (Input.GetKeyUp(KeyCode.E))
                 IncrementCurrentWheel();
-
-            if (Input.mouseScrollDelta.y != 0f)
-                m_currentWheels[m_currentWheel].OnScroll(Input.mouseScrollDelta.y * m_ropeScrollSpeed * Time.deltaTime);
         }
 
         private void FixedUpdate()
         {
-            Vector2 heldDirection = GetCurrentHeldDirection();
+            Vector2 keyboardAim = GetCurrentKeyboardAim();
 
-            if (heldDirection != Vector2.zero)
+            for (int i = 0; i < m_currentWheels.Count; i++)
             {
-                m_holdPrimaryFire = false;
-                m_holdSecondaryFire = false;
+                if (i != m_currentWheelIndex && !m_wheels[i].AlwaysActive)
+                    continue;
 
-                if (m_currentWheels[m_currentWheel].IsPrimaryFireHeld)
-                    m_currentWheels[m_currentWheel].ReleaseHoldPrimaryFire();
+                Wheel wheel = m_currentWheels[i];
 
-                if (m_currentWheels[m_currentWheel].IsSecondaryFireHeld)
-                    m_currentWheels[m_currentWheel].ReleaseHoldSecondaryFire();
+                if (m_wheels[i].Control == Wheel.Control.KEYBOARD)
+                {
+                    m_holdPrimaryFire = !keyboardAim.IsZero();
+                    m_holdSecondaryFire = Input.GetKey(KeyCode.Space);
+                }
+                else if (m_wheels[i].Control == Wheel.Control.MOUSE)
+                {
+                    if (m_primaryFire)
+                        wheel.PrimaryFire();
 
-                float angle = Vector3.SignedAngle(Vector3.down, heldDirection, Vector3.back);
-
-                m_currentWheels[m_currentWheel].SetAim(angle);
-                m_currentWheels[m_currentWheel].HoldPrimaryFire();
-            }
-            else
-            {
-                if (m_primaryFire)
-                    m_currentWheels[m_currentWheel].PrimaryFire();
-
-                if (m_secondaryFire)
-                    m_currentWheels[m_currentWheel].SecondaryFire();
+                    if (m_secondaryFire)
+                        wheel.SecondaryFire();
+                }
 
                 if (m_holdSecondaryFire)
-                    m_currentWheels[m_currentWheel].HoldSecondaryFire();
-                else if (m_currentWheels[m_currentWheel].IsSecondaryFireHeld)
-                    m_currentWheels[m_currentWheel].ReleaseHoldSecondaryFire();
+                    wheel.HoldSecondaryFire();
+                else if (wheel.IsSecondaryFireHeld)
+                    wheel.ReleaseHoldSecondaryFire();
 
                 if (m_holdPrimaryFire)
-                    m_currentWheels[m_currentWheel].HoldPrimaryFire();
-                else if (m_currentWheels[m_currentWheel].IsPrimaryFireHeld)
-                    m_currentWheels[m_currentWheel].ReleaseHoldPrimaryFire();
+                    wheel.HoldPrimaryFire();
+                else if (wheel.IsPrimaryFireHeld)
+                    wheel.ReleaseHoldPrimaryFire();
             }
-            
+
+            m_holdPrimaryFire = false;
+            m_holdSecondaryFire = false;
+
             m_primaryFire = false;
             m_secondaryFire = false;
         }
@@ -159,31 +190,40 @@ namespace Ricercar
 
         public void IncrementCurrentWheel()
         {
-            m_currentWheels[m_currentWheel].SetSelected(false);
-            m_currentWheel = (m_currentWheel + 1) % m_wheels.Length;
-            m_currentWheels[m_currentWheel].SetSelected(true);
+            m_currentWheels[m_currentWheelIndex].SetSelected(false);
 
+            int startingPoint = m_currentWheelIndex;
+
+            do
+            {
+                m_currentWheelIndex = m_currentWheelIndex.Increment(m_currentWheels);
+            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1 && m_currentWheelIndex != startingPoint);
+
+            m_currentWheels[m_currentWheelIndex].SetSelected(true);
         }
 
         public void DecrementCurrentWheel()
         {
-            m_currentWheels[m_currentWheel].SetSelected(false);
-            m_currentWheel--;
+            m_currentWheels[m_currentWheelIndex].SetSelected(false);
 
-            if (m_currentWheel < 0)
-                m_currentWheel = m_wheels.Length - 1;
+            int startingPoint = m_currentWheelIndex;
 
-            m_currentWheels[m_currentWheel].SetSelected(true);
+            do
+            {
+                m_currentWheelIndex = m_currentWheelIndex.Decrement(m_currentWheels);
+            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1 && m_currentWheelIndex != startingPoint);
+
+            m_currentWheels[m_currentWheelIndex].SetSelected(true);
         }
 
-        private Vector3 GetCurrentMouseAim()
+        private Vector2 GetCurrentMouseAim()
         {
-            Vector3 mousePos = Utils.GetMousePos2D(m_camera);
+            Vector2 mousePos = Utils.GetMousePos2D(m_camera);
 
-            return (mousePos - m_transform.position).normalized;
+            return (mousePos - (Vector2)m_transform.position.SetZ(0f)).normalized;
         }
 
-        private Vector2 GetCurrentHeldDirection()
+        private Vector2 GetCurrentKeyboardAim()
         {
             Vector2 sum = Vector2.zero;
 

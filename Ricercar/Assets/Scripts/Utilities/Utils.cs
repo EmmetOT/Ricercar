@@ -465,6 +465,73 @@ namespace Ricercar
         }
 
         /// <summary>
+        /// A 'true mod' function, unlike C#'s % operator which is just a remainder,
+        /// this works well with negative numbers.
+        /// </summary>
+        public static float Mod(this float x, float m)
+        {
+            return (x % m + m) % m;
+        }
+
+        /// <summary>
+        /// A 'true mod' function, unlike C#'s % operator which is just a remainder,
+        /// this works well with negative numbers.
+        /// </summary>
+        public static int Mod(this int x, int m)
+        {
+            return (x % m + m) % m;
+        }
+
+        /// <summary>
+        /// Safely increase an index in a list while looping around instead of overflowing.
+        /// </summary>
+        public static int Increment(this int index, int count)
+        {
+            return (index + 1).Mod(count);
+        }
+
+        /// <summary>
+        /// Safely decrease an index in a list while looping around instead of overflowing.
+        /// </summary>
+        public static int Decrement(this int index, int count)
+        {
+            return (index - 1).Mod(count);
+        }
+
+
+        /// <summary>
+        /// Safely increase an index in a list while looping around instead of overflowing.
+        /// </summary>
+        public static int Increment<T>(this int index, ICollection<T> col)
+        {
+            return (index + 1).Mod(col.Count);
+        }
+
+        /// <summary>
+        /// Safely decrease an index in a list while looping around instead of overflowing.
+        /// </summary>
+        public static int Decrement<T>(this int index, ICollection<T> col)
+        {
+            return (index - 1).Mod(col.Count);
+        }
+
+
+        /// <summary>
+        /// Check if one angle is between two other angles.
+        /// </summary>
+        public static bool IsInSpan(float value, float from, float to)
+        {
+            value = value.Mod(360f);
+            to = to.Mod(360f);
+            from = from.Mod(360f);
+
+            if (from <= to)
+                return value >= from && value <= to;
+            else
+                return value >= from || value <= to;
+        }
+
+        /// <summary>
         /// Returns whether the given lines intersect. Both lines are defined by a direction and a point along the line.
         /// If an intersection is found, it will be returned as an out param.
         /// </summary>

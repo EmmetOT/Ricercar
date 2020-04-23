@@ -52,6 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2168aacabc77ef54aae3e2b6e4dbef90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_currentColour: {r: 0, g: 0, b: 0, a: 0}
   m_aimSpriteRenderer: {fileID: 7462215926040972352}
   m_rope: {fileID: 480653021905748632}
   m_ropeSourceObiCollider: {fileID: 3139304519131685411}
@@ -59,11 +60,13 @@ MonoBehaviour:
   m_obiRopeMeshRenderer: {fileID: 480653021905748644}
   m_cursor: {fileID: 480653021905748643}
   m_tightenAfterLaunch: 1
-  m_ropeSizeChangeSpeed: 300
-  m_ropeTightenTarget: 0.8
+  m_ropeSizeChangeSpeed: 500
+  m_ropeTightenTarget: 0.7
   m_ropeResolution: 0.04
   m_ropeThickness: 0.04
   m_rotateToAttachPoint: 1
+  m_minDistanceBeforeLerp: 6
+  m_sourceDirectionToAttachDirectionLerp: 0.6
   m_debugBreakOnLaunch: 0
 --- !u!114 &480653021905748632
 MonoBehaviour:

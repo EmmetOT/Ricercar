@@ -57,6 +57,8 @@ namespace Ricercar
         {
             base.HoldPrimaryFire();
 
+            Debug.Log("Hold primary fire");
+
             for (int i = 0; i < m_rockets.Count; i++)
                 m_rockets[i].Fire();
         }
@@ -70,8 +72,6 @@ namespace Ricercar
 
         private void FireStabilisers()
         {
-            Debug.Log("Stabilising...");
-
             Vector2 antiGravForce = m_rigidbody.mass * Physics2D.gravity;
             Vector2 dampingForce = m_rigidbody.velocity * m_stabilisationDamping;
             Vector2 resultForce = antiGravForce + dampingForce;

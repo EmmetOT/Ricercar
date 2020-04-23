@@ -135,9 +135,10 @@ MonoBehaviour:
   m_wheelSpriteRenderer: {fileID: 1177345158483719304}
   m_index: 0
   m_componentCount: 0
+  m_componentProximity: 90
   m_environmentLayerMask:
     serializedVersion: 2
     m_Bits: 512
   m_ropeLauncherPrefab: {fileID: -1710211634298208096, guid: 6198755776edb924e958284ad06efcf5,
     type: 3}
-  m_componentProximity: 90
+  m_ropeSelectionAngularTolerance: 50

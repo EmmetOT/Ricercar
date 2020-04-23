@@ -22,12 +22,26 @@ namespace Ricercar
             [SerializeField]
             private float m_componentProximity;
             public float ComponentProximity => Mathf.Clamp(m_componentProximity, 0f, 360f);
+
+            [SerializeField]
+            private Control m_control;
+            public Control Control => m_control;
+
+            [SerializeField]
+            private bool m_alwaysActive;
+            public bool AlwaysActive => m_alwaysActive;
         }
 
         public enum Type
         {
             ROPE,
             ROCKET
+        }
+
+        public enum Control
+        { 
+            MOUSE,
+            KEYBOARD
         }
 
         public abstract Type WheelType { get; }
@@ -76,6 +90,8 @@ namespace Ricercar
 
         protected float SourceDistance => 0.555f + 0.08f * m_index;
 
+        public float CurrentAim { get; private set; }
+
         protected virtual bool CanAim => true;
 
         private bool m_isPrimaryFireHeld = false;
@@ -96,6 +112,8 @@ namespace Ricercar
 
         public virtual void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Rigidbody2D rigidbody, ObiCollider2D parentCollider)
         {
+            CurrentAim = 0f;
+
             m_index = index;
             m_componentCount = componentCount;
             m_componentProximity = componentProximity;
@@ -104,7 +122,7 @@ namespace Ricercar
 
             m_solver = solver;
 
-            m_material = new Material(material);
+            m_material = material;
 
             m_selectedColour = selectedColour;
             m_unselectedColour = unselectedColour;
@@ -143,15 +161,17 @@ namespace Ricercar
 
         protected virtual void OnDestroy()
         {
-            Destroy(m_material);
+
         }
 
         public void SetAim(float angle)
         {
             if (!CanAim)
                 return;
-            
-            OnSetAim(angle);
+
+            CurrentAim = angle;
+
+            OnSetAim(CurrentAim);
         }
 
         protected virtual void OnSetAim(float angle)
