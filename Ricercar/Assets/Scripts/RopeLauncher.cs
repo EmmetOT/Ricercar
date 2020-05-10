@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
+using Ricercar.Gravity;
 
 namespace Ricercar
 {
@@ -85,7 +86,7 @@ namespace Ricercar
 
         public float Angle { get; private set; }
 
-        private Rigidbody2D m_sourceRigidbody;
+        private Attractor m_attractor;
 
         private ObiSolver m_solver;
 
@@ -127,7 +128,7 @@ namespace Ricercar
                 if (!IsActive)
                     return default;
 
-                return  (m_attachedPoint - m_sourceRigidbody.transform.position).normalized;
+                return  (m_attachedPoint - m_attractor.transform.position).normalized;
             }
         }
 
@@ -136,14 +137,14 @@ namespace Ricercar
             return m_transform.position + m_transform.up * m_distanceFromCentre;
         }
 
-        public void Initialize(Rigidbody2D sourceRigidbody, ObiSolver solver, float distanceFromCentre, ContactFilter2D contactFilter, Material material)
+        public void Initialize(Attractor attractor, ObiSolver solver, float distanceFromCentre, ContactFilter2D contactFilter, Material material)
         {
             m_transform = transform;
             m_solver = solver;
 
             DetachRope();
 
-            m_sourceRigidbody = sourceRigidbody;
+            m_attractor = attractor;
             m_distanceFromCentre = distanceFromCentre;
             m_raycastFilter = contactFilter;
 
@@ -175,19 +176,19 @@ namespace Ricercar
 
             if (m_attachedPoint != default && m_rotateToAttachPoint)
             {
-                float distToAttachPoint = Vector3.Distance(m_attachedPoint, m_sourceRigidbody.transform.position);
+                float distToAttachPoint = Vector3.Distance(m_attachedPoint, m_attractor.transform.position);
 
                 Vector3 dir;
                 if (distToAttachPoint < m_minDistanceBeforeLerp)
                 {
                     dir = Vector3.Lerp(DirectionAtSource, DirectionToAttachPoint, m_sourceDirectionToAttachDirectionLerp);
-                    Debug.DrawLine(m_sourceRigidbody.transform.position, m_sourceRigidbody.transform.position + dir * 5f, Color.yellow, Time.deltaTime);
+                    Debug.DrawLine(m_attractor.transform.position, m_attractor.transform.position + dir * 5f, Color.yellow, Time.deltaTime);
                 }
                 else
                 {
                     dir = DirectionAtSource;
 
-                    Debug.DrawLine(m_sourceRigidbody.transform.position, m_sourceRigidbody.transform.position + dir * 5f, Color.green, Time.deltaTime);
+                    Debug.DrawLine(m_attractor.transform.position, m_attractor.transform.position + dir * 5f, Color.green, Time.deltaTime);
                 }
 
                 SetRotation(-Vector2.SignedAngle(Vector2.up, dir));

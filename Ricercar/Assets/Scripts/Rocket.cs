@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Ricercar.Gravity;
 
 namespace Ricercar
 {
@@ -35,7 +36,7 @@ namespace Ricercar
         [MinValue(0f)]
         private float m_maxForce = 800f;
 
-        private Rigidbody2D m_sourceRigidbody;
+        private Attractor m_sourceAttractor;
         private Transform m_transform;
         private float m_distanceFromCentre;
 
@@ -46,12 +47,12 @@ namespace Ricercar
             return m_transform.position + m_transform.up * m_distanceFromCentre;
         }
 
-        public void Initialize(Rigidbody2D sourceRigidbody, float distanceFromCentre)
+        public void Initialize(Attractor attractor, float distanceFromCentre)
         {
             Reset();
 
             m_transform = transform;
-            m_sourceRigidbody = sourceRigidbody;
+            m_sourceAttractor = attractor;
             m_distanceFromCentre = distanceFromCentre;
 
             gameObject.SetActive(true);
@@ -96,7 +97,7 @@ namespace Ricercar
 
         public void Fire(float force)
         {
-            m_sourceRigidbody.AddForceAtPosition(m_transform.up * -force, GetSourcePosition(), ForceMode2D.Force);
+            m_sourceAttractor.Rigidbody.AddForceAtPosition(m_transform.up * -force, GetSourcePosition(), ForceMode2D.Force);
 
             m_jetSpriteRenderer.enabled = true;
             m_showJetFlag = true;

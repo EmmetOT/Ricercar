@@ -61,7 +61,7 @@ MonoBehaviour:
   m_rocketPrefab: {fileID: 3207596671675961119, guid: 577f770d483087248809eef8851b1cd3,
     type: 3}
   m_rocketCount: 1
-  m_stabilisationDamping: 2000
+  m_stabilisationDamping: 10
 --- !u!1 &4006773972450450064
 GameObject:
   m_ObjectHideFlags: 0

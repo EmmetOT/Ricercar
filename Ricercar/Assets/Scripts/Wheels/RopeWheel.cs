@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
+using Ricercar.Gravity;
 
 namespace Ricercar
 {
@@ -36,9 +37,9 @@ namespace Ricercar
             }
         }
 
-        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Rigidbody2D rigidbody, ObiCollider2D parentCollider)
+        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Attractor attractor, ObiCollider2D parentCollider)
         {
-            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, rigidbody, parentCollider);
+            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, attractor, parentCollider);
 
             m_currentRopeIndex = 0;
 
@@ -50,7 +51,7 @@ namespace Ricercar
                 RopeLauncher ropeLauncher = m_ropeLauncherPool.GetNew();
                 ropeLauncher.transform.SetParent(m_transform);
                 ropeLauncher.transform.Reset();
-                ropeLauncher.Initialize(m_rigidbody, m_solver, SourceDistance, m_raycastFilter, m_material);
+                ropeLauncher.Initialize(m_attractor, m_solver, SourceDistance, m_raycastFilter, m_material);
 
                 m_ropeLaunchers.Add(ropeLauncher);
             }

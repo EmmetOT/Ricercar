@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using NaughtyAttributes;
 using UnityEngine;
 using System.Linq;
+using Ricercar.Gravity;
 
 namespace Ricercar
 {
@@ -23,7 +24,7 @@ namespace Ricercar
         private readonly List<Wheel> m_currentWheels = new List<Wheel>();
 
         [SerializeField]
-        private Rigidbody2D m_rigidbody;
+        private Attractor m_attractor;
 
         [SerializeField]
         private ObiCollider2D m_collider;
@@ -90,7 +91,7 @@ namespace Ricercar
                 Wheel wheel = m_wheelPool.GetNew(m_wheels[i].Type);
                 wheel.transform.SetParent(m_transform);
                 wheel.transform.localPosition = Vector3.zero;
-                wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour, m_unselectedColour, i, m_solver, m_material, m_rigidbody, m_collider);
+                wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour, m_unselectedColour, i, m_solver, m_material, m_attractor, m_collider);
                 wheel.SetSelected(i == m_currentWheelIndex);
 
                 m_currentWheels.Add(wheel);
@@ -227,10 +228,13 @@ namespace Ricercar
         {
             Vector2 sum = Vector2.zero;
 
-            sum += Input.GetKey(KeyCode.W) ? Vector2.up : Vector2.zero;
-            sum += Input.GetKey(KeyCode.S) ? Vector2.down : Vector2.zero;
-            sum += Input.GetKey(KeyCode.A) ? Vector2.left : Vector2.zero;
-            sum += Input.GetKey(KeyCode.D) ? Vector2.right : Vector2.zero;
+            Vector2 currentDown = Attractor.GetGravityAtPoint(m_attractor).normalized;
+            Vector2 currentRight = Vector3.Cross(currentDown, Vector3.back);
+
+            sum += Input.GetKey(KeyCode.W) ? -currentDown : Vector2.zero;
+            sum += Input.GetKey(KeyCode.S) ? currentDown : Vector2.zero;
+            sum += Input.GetKey(KeyCode.A) ? -currentRight : Vector2.zero;
+            sum += Input.GetKey(KeyCode.D) ? currentRight : Vector2.zero;
 
             return sum.normalized;
         }
@@ -238,8 +242,8 @@ namespace Ricercar
         [Button("Reduce Velocity")]
         private void ReduceVelocity()
         {
-            m_rigidbody.velocity = Vector2.zero;
-            m_rigidbody.angularVelocity = 0f;
+            m_attractor.Rigidbody.velocity = Vector2.zero;
+            m_attractor.Rigidbody.angularVelocity = 0f;
         }
     }
 }

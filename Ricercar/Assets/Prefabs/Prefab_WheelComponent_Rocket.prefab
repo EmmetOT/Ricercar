@@ -47,11 +47,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_aimSpriteRenderer: {fileID: 4600689114795960759}
   m_jetSpriteRenderer: {fileID: 7383176988619543774}
-  m_defaultForce: 10000
+  m_defaultForce: 40
   m_minForceJetSpriteScale: 0.1
   m_maxForceJetSpriteScale: 1
-  m_minForce: 1000
-  m_maxForce: 20000
+  m_minForce: 10
+  m_maxForce: 90
 --- !u!212 &4600689114795960759
 SpriteRenderer:
   m_ObjectHideFlags: 0

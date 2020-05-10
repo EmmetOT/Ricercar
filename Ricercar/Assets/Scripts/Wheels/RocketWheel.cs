@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Obi;
 using UnityEngine;
 using NaughtyAttributes;
+using Ricercar.Gravity;
 
 namespace Ricercar
 {
@@ -27,9 +28,9 @@ namespace Ricercar
 
         protected override bool CanAim => base.CanAim && !IsSecondaryFireHeld;
 
-        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Rigidbody2D rigidbody, ObiCollider2D parentCollider)
+        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Attractor attractor, ObiCollider2D parentCollider)
         {
-            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, rigidbody, parentCollider);
+            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, attractor, parentCollider);
             
             if (m_rocketPool == null)
                 m_rocketPool = new Pool<Rocket>(m_rocketPrefab);
@@ -39,7 +40,7 @@ namespace Ricercar
                 Rocket rocket = m_rocketPool.GetNew();
                 rocket.transform.SetParent(m_transform);
                 rocket.transform.Reset();
-                rocket.Initialize(m_rigidbody, SourceDistance);
+                rocket.Initialize(m_attractor, SourceDistance);
 
                 m_rockets.Add(rocket);
             }
@@ -56,9 +57,7 @@ namespace Ricercar
         public override void HoldPrimaryFire()
         {
             base.HoldPrimaryFire();
-
-            Debug.Log("Hold primary fire");
-
+            
             for (int i = 0; i < m_rockets.Count; i++)
                 m_rockets[i].Fire();
         }
@@ -72,8 +71,8 @@ namespace Ricercar
 
         private void FireStabilisers()
         {
-            Vector2 antiGravForce = m_rigidbody.mass * Physics2D.gravity;
-            Vector2 dampingForce = m_rigidbody.velocity * m_stabilisationDamping;
+            Vector2 antiGravForce = Attractor.GetGravityAtPoint(m_attractor);
+            Vector2 dampingForce = m_attractor.Rigidbody.velocity * m_stabilisationDamping;
             Vector2 resultForce = antiGravForce + dampingForce;
 
             float angle = -Vector2.SignedAngle(Vector2.up, resultForce.normalized);

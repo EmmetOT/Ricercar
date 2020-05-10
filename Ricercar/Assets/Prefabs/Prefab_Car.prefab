@@ -95,6 +95,7 @@ GameObject:
   - component: {fileID: 5934547499753476590}
   - component: {fileID: 5934547499753476581}
   - component: {fileID: 5934547499753476579}
+  - component: {fileID: 1869659432586935130}
   m_Layer: 8
   m_Name: Prefab_Car
   m_TagString: Untagged
@@ -137,10 +138,14 @@ MonoBehaviour:
   - m_type: 0
     m_componentCount: 3
     m_componentProximity: 360
+    m_control: 0
+    m_alwaysActive: 0
   - m_type: 1
     m_componentCount: 1
     m_componentProximity: 360
-  m_rigidbody: {fileID: 5934547499753476590}
+    m_control: 0
+    m_alwaysActive: 0
+  m_attractor: {fileID: 1869659432586935130}
   m_collider: {fileID: 5934547499753476579}
   m_material: {fileID: 2100000, guid: 555c5a5b69cc03a469832ab8004aa0e2, type: 2}
   m_ropeScrollSpeed: 2
@@ -212,3 +217,20 @@ MonoBehaviour:
   phase: 1
   thickness: 0
   sourceCollider: {fileID: 5934547499753476591}
+--- !u!114 &1869659432586935130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5934547499753476589}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f19cb09f9291f54db1f51cfbb43d3e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_rigidbody: {fileID: 5934547499753476590}
+  m_useRigidbodyMass: 1
+  m_mass: 0
+  m_applyForceToSelf: 1
+  m_affectsField: 0
