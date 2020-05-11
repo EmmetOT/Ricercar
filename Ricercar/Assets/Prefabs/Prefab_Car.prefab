@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5934547499182328357}
   - component: {fileID: 5934547499182328358}
-  m_Layer: 8
+  m_Layer: 0
   m_Name: MainSprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -95,8 +95,8 @@ GameObject:
   - component: {fileID: 5934547499753476590}
   - component: {fileID: 5934547499753476581}
   - component: {fileID: 5934547499753476579}
-  - component: {fileID: 1869659432586935130}
-  m_Layer: 8
+  - component: {fileID: 8128543372278895364}
+  m_Layer: 0
   m_Name: Prefab_Car
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -135,17 +135,12 @@ MonoBehaviour:
   - {fileID: 4561974985021395291, guid: 216919f7a6ba05845893671db77f7594, type: 3}
   - {fileID: 7232950396557961435, guid: f2e5fda9eded8c743a057d502531a719, type: 3}
   m_wheels:
-  - m_type: 0
-    m_componentCount: 3
-    m_componentProximity: 360
-    m_control: 0
-    m_alwaysActive: 0
   - m_type: 1
     m_componentCount: 1
     m_componentProximity: 360
-    m_control: 0
+    m_control: 1
     m_alwaysActive: 0
-  m_attractor: {fileID: 1869659432586935130}
+  m_attractor: {fileID: 8128543372278895364}
   m_collider: {fileID: 5934547499753476579}
   m_material: {fileID: 2100000, guid: 555c5a5b69cc03a469832ab8004aa0e2, type: 2}
   m_ropeScrollSpeed: 2
@@ -179,10 +174,10 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 200
+  m_Mass: 1
   m_LinearDrag: 0.4
   m_AngularDrag: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_Interpolate: 1
   m_SleepingMode: 1
@@ -217,7 +212,7 @@ MonoBehaviour:
   phase: 1
   thickness: 0
   sourceCollider: {fileID: 5934547499753476591}
---- !u!114 &1869659432586935130
+--- !u!114 &8128543372278895364
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -226,11 +221,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 5934547499753476589}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f19cb09f9291f54db1f51cfbb43d3e6, type: 3}
+  m_Script: {fileID: 11500000, guid: 8b5b054bbbd83a949bce1019e866d284, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_affectLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_startingForce: {x: 0, y: 0}
   m_rigidbody: {fileID: 5934547499753476590}
   m_useRigidbodyMass: 1
   m_mass: 0
   m_applyForceToSelf: 1
   m_affectsField: 0
+  m_tracePath: 0

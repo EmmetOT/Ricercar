@@ -229,6 +229,10 @@ namespace Ricercar
             Vector2 sum = Vector2.zero;
 
             Vector2 currentDown = Attractor.GetGravityAtPoint(m_attractor).normalized;
+
+            if (currentDown.IsZero())
+                currentDown = Vector2.down;
+
             Vector2 currentRight = Vector3.Cross(currentDown, Vector3.back);
 
             sum += Input.GetKey(KeyCode.W) ? -currentDown : Vector2.zero;

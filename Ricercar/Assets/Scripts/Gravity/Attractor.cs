@@ -6,11 +6,14 @@ using NaughtyAttributes;
 namespace Ricercar.Gravity
 {
     [RequireComponent(typeof(Rigidbody2D))]
-    public class Attractor : MonoBehaviour
+    public abstract class Attractor : MonoBehaviour
     {
-        public const float G = 667.4f;//6.673e-11f;
+        public const float G = 667.4f;
 
         private static List<Attractor> m_attractors = new List<Attractor>();
+
+        [SerializeField]
+        private LayerMask m_affectLayers;
 
         [SerializeField]
         private Vector2 m_startingForce;
@@ -45,6 +48,12 @@ namespace Ricercar.Gravity
         private float m_pathTraceFrequency = 0.5f;
 
         private float m_pathTraceTimer = 0f;
+
+        /// <summary>
+        /// Returns the gravity vector from the given point to this attractor. Also returns the point on the attractor which the
+        /// given point is being pulled towards.
+        /// </summary>
+        public abstract Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos);
 
         private void OnEnable()
         {
@@ -84,7 +93,7 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            Vector3 gravityForce = GetGravityAtPoint(m_rigidbody.position, Mass, ignore: this);
+            Vector3 gravityForce = GetGravityAtPoint(m_rigidbody.position, Mass, ignore: this, gameObject.layer);
             m_rigidbody.AddForce(gravityForce);
         }
         
@@ -94,7 +103,7 @@ namespace Ricercar.Gravity
         }
 
 #if UNITY_EDITOR
-        private void OnDrawGizmos()
+        protected virtual void OnDrawGizmos()
         {
             if (Application.isPlaying && m_tracePath)
             {
@@ -105,7 +114,7 @@ namespace Ricercar.Gravity
                 }
             }
 
-            if (!m_startingForce.IsZero())
+            if (!Application.isPlaying && !m_startingForce.IsZero())
             {
                 Gizmos.color = Color.white;
                 Gizmos.DrawLine(m_rigidbody.position, m_rigidbody.position + m_startingForce);
@@ -113,7 +122,7 @@ namespace Ricercar.Gravity
         }
 #endif
 
-        public static Vector3 GetGravityAtPoint(Vector2 position, float mass = 1f, Attractor ignore = null)
+        public static Vector3 GetGravityAtPoint(Vector2 position, float mass = 1f, Attractor ignore = null, int layer = -1)
         {
             Vector2 result = Vector2.zero;
 
@@ -124,10 +133,16 @@ namespace Ricercar.Gravity
                 if ((ignore != null && attractor == ignore) || !attractor.m_affectsField)
                     continue;
 
-                Rigidbody2D attractorRigidbody = attractor.Rigidbody;
+                if (layer != -1 && (attractor.m_affectLayers & (1 << layer)) == 0)
+                    continue;
+
                 float attractorMass = attractor.Mass;
 
-                Vector2 difference = attractorRigidbody.position - position;
+                Vector2 difference = attractor.GetGravityVector(position, out Vector2 gravitySource);
+
+                if (Neutralizer.IsNeutralized(position, gravitySource))
+                    continue;
+
                 float distance = difference.magnitude;
 
                 if (distance == 0f)
@@ -136,7 +151,6 @@ namespace Ricercar.Gravity
                 Vector2 direction = difference.normalized;
 
                 float forceMagnitude = G * (mass * attractorMass) / (distance * distance);
-                Vector3 force = direction * forceMagnitude;
 
                 result += direction * forceMagnitude;
             }

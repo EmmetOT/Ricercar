@@ -9,9 +9,14 @@ namespace Ricercar
     public class CameraController : MonoBehaviour
     {
         [SerializeField]
+        [Layer]
+        private int m_gravityLayers;
+
+        [SerializeField]
         private Transform m_followTransform;
 
         [SerializeField]
+        [MinValue(0f)]
         private float m_followSpeed = 1f;
 
         [SerializeField]
@@ -21,6 +26,11 @@ namespace Ricercar
 
         [SerializeField]
         private bool m_rotateWithGravity = false;
+
+        [SerializeField]
+        [MinValue(0f)]
+        [ShowIf("m_rotateWithGravity")]
+        private float m_rotationSpeed = 1f;
 
         private void Awake()
         {
@@ -36,8 +46,12 @@ namespace Ricercar
 
             if (m_rotateWithGravity)
             {
-                Vector2 gravity = Attractor.GetGravityAtPoint(m_transform.position);
-                m_camera.transform.rotation = Quaternion.LookRotation(Vector3.forward, -gravity.normalized);
+                Vector2 gravity = Attractor.GetGravityAtPoint(m_transform.position, layer: m_gravityLayers);
+
+                if (gravity.IsZero())
+                    gravity = Vector2.down;
+
+                m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -gravity.normalized), m_rotationSpeed * Time.deltaTime);
             }
         }
     }

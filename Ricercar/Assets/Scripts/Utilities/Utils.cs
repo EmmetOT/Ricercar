@@ -18,36 +18,39 @@ namespace Ricercar
 {
     public static class Utils
     {
+        private readonly static Mesh m_triangle;
+
         static Utils()
         {
-            m_rainbowGradient = new Gradient();
-
-            GradientColorKey[] colourKeys = new GradientColorKey[7];
-
-            colourKeys[0].color = Color.red;
-            colourKeys[0].time = 0f / 6f;
-            colourKeys[1].color = ToColor(0xFF8200);
-            colourKeys[1].time = 1f / 6f;
-            colourKeys[2].color = Color.yellow;
-            colourKeys[2].time = 2f / 6f;
-            colourKeys[3].color = Color.green;
-            colourKeys[3].time = 3f / 6f;
-            colourKeys[4].color = ToColor(0x005DFF);
-            colourKeys[4].time = 4f / 6f;
-            colourKeys[5].color = ToColor(0xAE00FF);
-            colourKeys[5].time = 5f / 6f;
-            colourKeys[6].color = ToColor(0xFF00CB);
-            colourKeys[6].time = 6f / 6f;
-
-            GradientAlphaKey[] alphaKey = new GradientAlphaKey[1];
-
-            for (int i = 0; i < alphaKey.Length; i++)
-                alphaKey[i].alpha = 1f;
-
-            m_rainbowGradient.SetKeys(colourKeys, alphaKey);
+            m_rainbowGradient = CreateGradient(
+                Color.red,
+                ToColor(0xFF8200),
+                Color.yellow,
+                Color.green,
+                ToColor(0x005DFF),
+                ToColor(0xAE00FF),
+                ToColor(0xFF00CB)
+                );
 
             m_horizontalPlane = new Plane(Vector3.up, Vector3.zero);
             m_verticalPlane = new Plane(Vector3.back, Vector3.zero);
+
+            m_triangle = new Mesh
+            {
+                vertices = new Vector3[]
+                {
+                    new Vector3(-0.333f, -0.333f, 0f),
+                    new Vector3(0f, 0.333f, 0f),
+                    new Vector3(0.333f, -0.333f, 0f)
+                },
+                normals = new Vector3[]
+                {
+                    Vector3.back,
+                    Vector3.back,
+                    Vector3.back,
+                },
+                triangles = new int[] { 0, 1, 2 }
+            };
         }
 
         #region Unity Extensions
@@ -195,7 +198,7 @@ namespace Ricercar
         public static V GetRandomValue<K, V>(this Dictionary<K, V> dict)
         {
             List<KeyValuePair<K, V>> list = dict.ToList();
-            
+
             return list[UnityEngine.Random.Range(0, list.Count)].Value;
         }
 
@@ -258,7 +261,32 @@ namespace Ricercar
 
         #region Colours
 
-        private static Gradient m_rainbowGradient;
+        private static readonly Gradient m_rainbowGradient;
+
+        /// <summary>
+        /// Creates a gradient of the given colours, distributed evenly.
+        /// </summary>
+        public static Gradient CreateGradient(params Color[] colours)
+        {
+            Gradient gradient = new Gradient();
+
+            GradientColorKey[] colourKeys = new GradientColorKey[colours.Length];
+
+            for (int i = 0; i < colours.Length; i++)
+            {
+                colourKeys[i].color = colours[i];
+                colourKeys[i].time = i / (colours.Length - 1f);
+            }
+
+            GradientAlphaKey[] alphaKey = new GradientAlphaKey[1];
+
+            for (int i = 0; i < alphaKey.Length; i++)
+                alphaKey[i].alpha = 1f;
+
+            gradient.SetKeys(colourKeys, alphaKey);
+
+            return gradient;
+        }
 
         /// <summary>
         /// Given a value between 0 and 1, return a rainbow colour.
@@ -309,42 +337,96 @@ namespace Ricercar
 
         #region Gizmos
 
-        public static void DrawCrossHandles(Vector3 position, Color colorIn)
+        public static void DrawArrow(Vector3 position, Vector3 direction, Color colour, float magnitudeScale, float arrowScale)
         {
-#if UNITY_EDITOR
-            Handles.color = colorIn;
-            Handles.DrawLine(position + (Vector3.left * 0.5f), position + (Vector3.right * 0.5f));
-            Handles.DrawLine(position + (Vector3.back * 0.5f), position + (Vector3.forward * 0.5f));
-#endif
+            Gizmos.color = colour;
+
+            Gizmos.DrawLine(position, position + direction * magnitudeScale);
+
+
+            Gizmos.DrawMesh(m_triangle, 0, position + direction * magnitudeScale, Quaternion.LookRotation(Vector3.forward, direction), Vector3.one * arrowScale);
         }
 
-        public static void DrawCrossDebug(Vector3 position, Color colorIn, float size, float duration = 0f)
-        {
-#if UNITY_EDITOR
-            Debug.DrawLine(position + (Vector3.left * 0.5f * size), position + (Vector3.right * 0.5f * size), colorIn, duration, false);
-            Debug.DrawLine(position + (Vector3.back * 0.5f * size), position + (Vector3.forward * 0.5f * size), colorIn, duration, false);
-#endif
-        }
-
-        public static void DrawCircleDebug(Vector3 position, Color colorIn, float radius, float duration)
-        {
-#if UNITY_EDITOR
-            int pointCount = 24;
-            float degreeIncrement = 360f / pointCount;
-            Vector3 currentOffset = (Vector3.forward * radius);
-            Vector3 prevOffset;
-
-            for (int i = 0; i < pointCount; i++)
-            {
-                prevOffset = currentOffset;
-                currentOffset = Quaternion.Euler(0f, degreeIncrement, 0f) * currentOffset;
-                Debug.DrawLine(position + prevOffset, position + currentOffset, colorIn, duration);
-            }
-#endif
-        }
         #endregion
 
         #region Maths
+
+        /// <summary>
+        /// This function finds out on which side of a line segment the point is located.
+        /// The point is assumed to be on a line created by linePoint1 and linePoint2. If the point is not on
+        /// the line segment, project it on the line using ProjectPointOnLine() first.
+        /// Returns 0 if point is on the line segment.
+        /// Returns 1 if point is outside of the line segment and located on the side of linePoint1.
+        /// Returns 2 if point is outside of the line segment and located on the side of linePoint2.
+        /// </summary>
+        public static int PointOnWhichSideOfLineSegment(Vector3 linePoint1, Vector3 linePoint2, Vector3 point)
+        {
+            Vector3 lineVec = linePoint2 - linePoint1;
+            Vector3 pointVec = point - linePoint1;
+
+            float dot = Vector3.Dot(pointVec, lineVec);
+
+            if (dot > 0)
+            {
+                // point is on side of linePoint2, compared to linePoint1
+
+                //point is on the line segment
+                if (pointVec.magnitude <= lineVec.magnitude)
+                    return 0;
+
+                //point is not on the line segment and it is on the side of linePoint2
+                else
+                    return 2;
+            }
+            else
+            {
+                // Point is not on side of linePoint2, compared to linePoint1.
+                // Point is not on the line segment and it is on the side of linePoint1.
+                return 1;
+            }
+        }
+
+        /// <summary>
+        /// This function returns a point which is a projection from a point to a line.
+        /// The line is considered infinite. If the line is finite, use ProjectPointOnLineSegment() instead.
+        /// </summary>
+        public static Vector3 ProjectPointOnLine(Vector3 linePoint, Vector3 lineDir, Vector3 point)
+        {
+            //get vector from point on line to point in space
+            Vector3 linePointToPoint = point - linePoint;
+
+            float t = Vector3.Dot(linePointToPoint, lineDir);
+
+            return linePoint + lineDir * t;
+        }
+
+        /// <summary>
+        /// This function returns a point which is a projection from a point to a line segment.
+        /// If the projected point lies outside of the line segment, the projected point will 
+        /// be clamped to the appropriate line edge.
+        /// If the line is infinite instead of a segment, use ProjectPointOnLine() instead.
+        /// </summary>
+        public static Vector3 ProjectPointOnLineSegment(Vector3 a, Vector3 b, Vector3 point)
+        {
+            Vector3 vector = b - a;
+
+            Vector3 projectedPoint = ProjectPointOnLine(a, vector.normalized, point);
+
+            int side = PointOnWhichSideOfLineSegment(a, b, projectedPoint);
+
+            // The projected point is on the line segment
+            if (side == 0)
+                return projectedPoint;
+
+            else if (side == 1)
+                return a;
+
+            else if (side == 2)
+                return b;
+
+            //output is invalid
+            return Vector3.zero;
+        }
 
         private static Plane m_horizontalPlane;
         private static Plane m_verticalPlane;
@@ -514,7 +596,6 @@ namespace Ricercar
         {
             return (index - 1).Mod(col.Count);
         }
-
 
         /// <summary>
         /// Check if one angle is between two other angles.
