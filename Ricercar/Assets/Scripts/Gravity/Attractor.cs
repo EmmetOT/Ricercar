@@ -143,14 +143,14 @@ namespace Ricercar.Gravity
                 if (Neutralizer.IsNeutralized(position, gravitySource))
                     continue;
 
-                float distance = difference.magnitude;
+                float sqrMagnitude = difference.sqrMagnitude;
 
-                if (distance == 0f)
+                if (sqrMagnitude == 0f)
                     continue;
                 
                 Vector2 direction = difference.normalized;
 
-                float forceMagnitude = G * (mass * attractorMass) / (distance * distance);
+                float forceMagnitude = G * (mass * attractorMass) / sqrMagnitude;
 
                 result += direction * forceMagnitude;
             }

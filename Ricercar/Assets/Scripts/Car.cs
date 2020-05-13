@@ -44,6 +44,8 @@ namespace Ricercar
         private Transform m_transform;
         private Camera m_camera;
 
+        [SerializeField]
+        [ReadOnly]
         private int m_currentWheelIndex = 0;
 
         private ObiRopeBlueprint m_ropeBlueprint;
@@ -100,8 +102,6 @@ namespace Ricercar
 
         private bool m_primaryFire = false;
         private bool m_secondaryFire = false;
-        private bool m_holdPrimaryFire = false;
-        private bool m_holdSecondaryFire = false;
 
         private void Update()
         {
@@ -126,15 +126,13 @@ namespace Ricercar
                 if (m_wheels[i].Control == Wheel.Control.MOUSE)
                     wheel.OnScroll(Input.mouseScrollDelta.y * m_ropeScrollSpeed * Time.deltaTime);
             }
-
+            
             if (Input.GetMouseButtonUp(0))
                 m_primaryFire = true;
-            else if (Input.GetMouseButtonUp(1))
+
+            if (Input.GetMouseButtonUp(1))
                 m_secondaryFire = true;
-
-            m_holdPrimaryFire = Input.GetMouseButton(0);
-            m_holdSecondaryFire = Input.GetMouseButton(1);
-
+            
             if (Input.GetKeyUp(KeyCode.Q))
                 DecrementCurrentWheel();
             else if (Input.GetKeyUp(KeyCode.E))
@@ -154,8 +152,15 @@ namespace Ricercar
 
                 if (m_wheels[i].Control == Wheel.Control.KEYBOARD)
                 {
-                    m_holdPrimaryFire = !keyboardAim.IsZero();
-                    m_holdSecondaryFire = Input.GetKey(KeyCode.Space);
+                    if (Input.GetKey(KeyCode.Space))
+                        wheel.HoldSecondaryFire();
+                    else if (wheel.IsSecondaryFireHeld)
+                        wheel.ReleaseHoldSecondaryFire();
+
+                    if (!keyboardAim.IsZero())
+                        wheel.HoldPrimaryFire();
+                    else if (wheel.IsPrimaryFireHeld)
+                        wheel.ReleaseHoldPrimaryFire();
                 }
                 else if (m_wheels[i].Control == Wheel.Control.MOUSE)
                 {
@@ -164,21 +169,19 @@ namespace Ricercar
 
                     if (m_secondaryFire)
                         wheel.SecondaryFire();
+                    
+                    if (Input.GetMouseButton(1))
+                        wheel.HoldSecondaryFire();
+                    else if (wheel.IsSecondaryFireHeld)
+                        wheel.ReleaseHoldSecondaryFire();
+
+                    if (Input.GetMouseButton(0))
+                        wheel.HoldPrimaryFire();
+                    else if (wheel.IsPrimaryFireHeld)
+                        wheel.ReleaseHoldPrimaryFire();
                 }
 
-                if (m_holdSecondaryFire)
-                    wheel.HoldSecondaryFire();
-                else if (wheel.IsSecondaryFireHeld)
-                    wheel.ReleaseHoldSecondaryFire();
-
-                if (m_holdPrimaryFire)
-                    wheel.HoldPrimaryFire();
-                else if (wheel.IsPrimaryFireHeld)
-                    wheel.ReleaseHoldPrimaryFire();
             }
-
-            m_holdPrimaryFire = false;
-            m_holdSecondaryFire = false;
 
             m_primaryFire = false;
             m_secondaryFire = false;

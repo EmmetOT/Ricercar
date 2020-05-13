@@ -54,15 +54,20 @@ namespace Ricercar
         {
             base.HoldPrimaryFire();
             
+            Vector2 sumForce = Vector2.zero;
+
             for (int i = 0; i < m_guns.Count; i++)
-                m_guns[i].Fire();
+                sumForce += m_guns[i].Fire();
+
+            m_attractor.Rigidbody.AddForce(-sumForce);
         }
 
-        public override void HoldSecondaryFire()
+        public override void SecondaryFire()
         {
-            base.HoldSecondaryFire();
+            base.SecondaryFire();
 
-            FireStabilisers();
+            for (int i = 0; i < m_guns.Count; i++)
+                m_guns[i].DespawnProjectiles();
         }
 
         private float GetIndexAngle(int index, float squash)

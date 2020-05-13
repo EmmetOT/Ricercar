@@ -17,7 +17,7 @@ namespace Ricercar
         private SpriteRenderer m_jetSpriteRenderer;
 
         [SerializeField]
-        [UnityEngine.Serialization.FormerlySerializedAs("m_strength")]
+        [MinValue(0f)]
         private float m_defaultForce;
 
         [SerializeField]

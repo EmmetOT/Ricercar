@@ -134,6 +134,7 @@ MonoBehaviour:
   m_wheelPrefabs:
   - {fileID: 4561974985021395291, guid: 216919f7a6ba05845893671db77f7594, type: 3}
   - {fileID: 7232950396557961435, guid: f2e5fda9eded8c743a057d502531a719, type: 3}
+  - {fileID: 3326319059604934801, guid: f22634429b5ed9049af721d32dc2da8b, type: 3}
   m_wheels:
   - m_type: 1
     m_componentCount: 1

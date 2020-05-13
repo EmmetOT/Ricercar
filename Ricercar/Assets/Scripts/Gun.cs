@@ -8,9 +8,19 @@ namespace Ricercar
 {
     public class Gun : MonoBehaviour
     {
+        [SerializeField]
+        private Projectile m_projectilePrefab;
 
+        private static Pool<Projectile> m_projectilePool;
+
+        private readonly List<Projectile> m_projectiles = new List<Projectile>();
+        
         [SerializeField]
         protected SpriteRenderer m_aimSpriteRenderer;
+
+        [SerializeField]
+        [MinValue(0f)]
+        private float m_defaultForce;
 
         private Attractor m_sourceAttractor;
         private Transform m_transform;
@@ -18,6 +28,9 @@ namespace Ricercar
 
         public void Initialize(Attractor attractor, float distanceFromCentre)
         {
+            if (m_projectilePool == null)
+                m_projectilePool = new Pool<Projectile>(m_projectilePrefab);
+
             Reset();
 
             m_transform = transform;
@@ -39,9 +52,27 @@ namespace Ricercar
 
         }
 
-        public void Fire()
+        public void DespawnProjectiles()
         {
+            m_projectilePool.ReturnAll();
+            m_projectiles.Clear();
 
+        }
+
+        public Vector2 Fire()
+        {
+            return Fire(m_defaultForce);
+        }
+
+        public Vector2 Fire(float force)
+        {
+            Vector3 resultForce = m_transform.up * force;
+
+            Projectile projectile = m_projectilePool.GetNew();
+            projectile.Initialize(m_transform.position + m_transform.up * 0.3f, resultForce);
+            m_projectiles.Add(projectile);
+
+            return resultForce;
         }
 
         public void SetSpriteColour(Color col)
