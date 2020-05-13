@@ -36,7 +36,8 @@ namespace Ricercar
         public enum Type
         {
             ROPE,
-            ROCKET
+            ROCKET,
+            GUN
         }
 
         public enum Control
