@@ -12,10 +12,17 @@ namespace Ricercar.Gravity
 
         private static List<Attractor> m_attractors = new List<Attractor>();
 
-        [SerializeField]
-        private LayerMask m_affectLayers;
 
         [SerializeField]
+        protected bool m_isStatic = false;
+        public bool IsStatic => m_isStatic;
+
+
+        //[SerializeField]
+        //private LayerMask m_affectLayers;
+
+        [SerializeField]
+        [HideIf("m_static")]
         private Vector2 m_startingForce;
 
         [SerializeField]
@@ -38,7 +45,7 @@ namespace Ricercar.Gravity
         [SerializeField]
         private bool m_affectsField = true;
 
-        public Vector2 CurrentGravity => GetGravityAtPoint(this);
+        public Vector2 CurrentGravity => GetGravity(this);
 
         [SerializeField]
         private bool m_tracePath = false;
@@ -67,7 +74,7 @@ namespace Ricercar.Gravity
 
         private void Start()
         {
-            if (!m_startingForce.IsZero())
+            if (!m_startingForce.IsZero() && !m_isStatic)
                 m_rigidbody.AddForce(m_startingForce);
 
             if (m_tracePath)
@@ -93,13 +100,60 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            Vector3 gravityForce = GetGravityAtPoint(m_rigidbody.position, Mass, ignore: this, gameObject.layer);
+            Vector2 gravityForce = GetGravity(m_rigidbody.position, ignore: this) * Mass;
+
             m_rigidbody.AddForce(gravityForce);
         }
-        
-        public static Vector3 GetGravityAtPoint(Attractor attractor)
+
+        public static Vector2 GetGravity(Vector2 position, Attractor ignore = null)
         {
-            return GetGravityAtPoint(attractor.Position, attractor.Mass, attractor);
+            Vector2 gravityForce = Vector3.zero;
+
+            gravityForce += GravityField.GetGravity(position);
+            gravityForce += GetDynamicGravity(position, ignore: ignore);
+
+            return gravityForce;
+        }
+        
+        public static Vector2 GetGravity(Attractor attractor)
+        {
+            return GetGravity(attractor.Position, attractor);
+        }
+
+        public static Vector2 GetDynamicGravity(Vector2 position, Attractor ignore = null)
+        {
+            Vector2 result = Vector2.zero;
+
+            for (int i = 0; i < m_attractors.Count; i++)
+            {
+                Attractor attractor = m_attractors[i];
+
+                if (attractor.IsStatic)
+                    continue;
+
+                if ((ignore != null && attractor == ignore) || !attractor.m_affectsField)
+                    continue;
+                
+                float attractorMass = attractor.Mass;
+
+                Vector2 difference = attractor.GetGravityVector(position, out Vector2 gravitySource);
+
+                if (Neutralizer.IsNeutralized(position, gravitySource))
+                    continue;
+
+                float sqrMagnitude = difference.sqrMagnitude;
+
+                if (sqrMagnitude == 0f)
+                    continue;
+
+                Vector2 direction = difference.normalized;
+
+                float forceMagnitude = (G * attractorMass) / sqrMagnitude;
+
+                result += direction * forceMagnitude;
+            }
+
+            return result;
         }
 
 #if UNITY_EDITOR
@@ -122,40 +176,26 @@ namespace Ricercar.Gravity
         }
 #endif
 
-        public static Vector3 GetGravityAtPoint(Vector2 position, float mass = 1f, Attractor ignore = null, int layer = -1)
+        /// <summary>
+        /// Quick method to get just the gravity from the given position to this attractor.
+        /// </summary>
+        public Vector2 GetGravity(Vector2 position, bool checkNeutralizers = false)
         {
-            Vector2 result = Vector2.zero;
+            Vector2 difference = GetGravityVector(position, out Vector2 gravitySource);
+            
+            if (checkNeutralizers && Neutralizer.IsNeutralized(position, gravitySource))
+                return Vector2.zero;
+            
+            float sqrMagnitude = difference.sqrMagnitude;
 
-            for (int i = 0; i < m_attractors.Count; i++)
-            {
-                Attractor attractor = m_attractors[i];
+            if (sqrMagnitude == 0f)
+                return Vector2.zero;
 
-                if ((ignore != null && attractor == ignore) || !attractor.m_affectsField)
-                    continue;
+            Vector2 direction = difference.normalized;
+            
+            float forceMagnitude = G * Mass / sqrMagnitude;
 
-                if (layer != -1 && (attractor.m_affectLayers & (1 << layer)) == 0)
-                    continue;
-
-                float attractorMass = attractor.Mass;
-
-                Vector2 difference = attractor.GetGravityVector(position, out Vector2 gravitySource);
-
-                if (Neutralizer.IsNeutralized(position, gravitySource))
-                    continue;
-
-                float sqrMagnitude = difference.sqrMagnitude;
-
-                if (sqrMagnitude == 0f)
-                    continue;
-                
-                Vector2 direction = difference.normalized;
-
-                float forceMagnitude = G * (mass * attractorMass) / sqrMagnitude;
-
-                result += direction * forceMagnitude;
-            }
-
-            return result;
+            return direction * forceMagnitude;
         }
 
         [Button]

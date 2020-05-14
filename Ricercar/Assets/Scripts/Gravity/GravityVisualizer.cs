@@ -70,7 +70,7 @@ namespace Ricercar.Gravity
                 {
                     Vector2 pos = bottomLeft + xComponent * x + yComponent * y;
 
-                    Vector2 attraction = Attractor.GetGravityAtPoint(pos, 1f, layer: m_visualizeForLayer);
+                    Vector2 attraction = Attractor.GetDynamicGravity(pos/*, 1f*//*, layer: m_visualizeForLayer*/);
 
                     if (attraction.magnitude * m_vectorScale <= m_minVectorMagnitude)
                         continue;

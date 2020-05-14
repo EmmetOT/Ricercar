@@ -8,9 +8,9 @@ namespace Ricercar
 {
     public class CameraController : MonoBehaviour
     {
-        [SerializeField]
-        [Layer]
-        private int m_gravityLayers;
+        //[SerializeField]
+        //[Layer]
+        //private int m_gravityLayers;
 
         [SerializeField]
         private Transform m_followTransform;
@@ -46,7 +46,7 @@ namespace Ricercar
 
             if (m_rotateWithGravity)
             {
-                Vector2 gravity = Attractor.GetGravityAtPoint(m_transform.position, layer: m_gravityLayers);
+                Vector2 gravity = Attractor.GetGravity(m_transform.position);
 
                 if (gravity.IsZero())
                     gravity = Vector2.down;
