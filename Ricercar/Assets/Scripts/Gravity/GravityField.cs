@@ -17,8 +17,11 @@ namespace Ricercar.Gravity
     {
         private static readonly List<GravityField> m_allFields = new List<GravityField>();
 
-        [SerializeField]
-        private List<Attractor> m_attractors;
+        private static readonly List<Attractor> m_allAttractors = new List<Attractor>();
+
+        private static readonly List<Attractor> m_staticAttractors = new List<Attractor>();
+
+        public const float G = 667.4f;
 
         [SerializeField]
         [MinValue(1)]
@@ -64,41 +67,88 @@ namespace Ricercar.Gravity
         // [ (0, 0) ] [ (1, 0) ] [ (2, 0) ]
 
         [SerializeField]
-        [HideInInspector]
+        //[HideInInspector]
         private Vector2[] m_gravityPoints;
 
         [SerializeField]
-        [HideInInspector]
+        //[HideInInspector]
         private Vector2[] m_positions;
+
+        [SerializeField]
+        [HideInInspector]
+        private Vector2 m_bottomLeft;
+
+        [SerializeField]
+        [HideInInspector]
+        private Vector2 m_topRight;
+
+        [SerializeField]
+        [HideInInspector]
+        private Vector2 m_bottomRight;
+
+        [SerializeField]
+        [HideInInspector]
+        private Vector2 m_topLeft;
+
+        #region Unity Callbacks
+
+        private void Awake()
+        {
+            Initialize();
+        }
+
+        private void OnDestroy()
+        {
+            Destroy(m_displayMaterial);
+        }
+
+        private void OnEnable()
+        {
+            m_allFields.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            m_allFields.Remove(this);
+        }
+
+        #endregion
+
+        #region Array Access
 
         private Vector2 GetGravityPoint(int x, int y)
         {
-            //return m_gravityPoints[x, y];
             return m_gravityPoints[y * m_resolution + x];
         }
         private void SetGravityPoint(int x, int y, Vector2 gravityPoint)
         {
-            //m_gravityPoints[x, y] = gravityPoint;
             m_gravityPoints[y * m_resolution + x] = gravityPoint;
         }
 
         private void AddToGravityPoint(int x, int y, Vector2 gravityPoint)
         {
-            //m_gravityPoints[x, y] += gravityPoint;
             m_gravityPoints[y * m_resolution + x] += gravityPoint;
         }
 
         private Vector2 GetPosition(int x, int y)
         {
-            //return m_positions[x, y];
+
+            if (m_positions.IsOutOfRange(y * m_resolution + x))
+            {
+                Debug.Log((y * m_resolution + x) + " is out of range of " + m_positions.Length);
+                Debug.Log("X = " + x + ", " + y);
+            }
+
+
             return m_positions[y * m_resolution + x];
         }
 
         private void SetPosition(int x, int y, Vector2 position)
         {
-            //m_positions[x, y] = position;
             m_positions[y * m_resolution + x] = position;
         }
+
+        #endregion
 
         public Vector2 GetBottomLeft()
         {
@@ -120,56 +170,19 @@ namespace Ricercar.Gravity
             return (Vector2)m_transform.position + Vector2.up * m_size * 0.5f + Vector2.left * m_size * 0.5f;
         }
 
-        [SerializeField]
-        [HideInInspector]
-        private Vector2 m_bottomLeft;
-
-        [SerializeField]
-        [HideInInspector]
-        private Vector2 m_topRight;
-
-        [SerializeField]
-        [HideInInspector]
-        private Vector2 m_bottomRight;
-
-        [SerializeField]
-        [HideInInspector]
-        private Vector2 m_topLeft;
-
-        private void OnDisplayDataChanged()
+        private void Initialize()
         {
-            m_quad.gameObject.SetActive(m_displayData);
-        }
-        
-        private void OnDestroy()
-        {
-            Destroy(m_displayMaterial);
-        }
+            m_transform = transform;
 
-        private void OnEnable()
-        {
-            m_allFields.Add(this);
-        }
-
-        private void OnDisable()
-        {
-            m_allFields.Remove(this);
-        }
-
-        [Button]
-        public void Bake()
-        {
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
             m_bottomRight = GetBottomRight();
             m_topLeft = GetTopLeft();
+        }
 
-            m_transform = transform;
-
-            m_gravityPoints = new Vector2[m_resolution * m_resolution];
-            m_positions = new Vector2[m_resolution * m_resolution];
-
-            BakeGravity();
+        private void GenerateTexture()
+        {
+            Debug.Log("Setting texture.");
 
             m_texture = CreateTexture(m_textureResolution);
 
@@ -194,11 +207,15 @@ namespace Ricercar.Gravity
         [Button]
         public void BakeAll()
         {
+            FindAllStaticAttractors();
+
             GravityField[] fields = FindObjectsOfType<GravityField>();
 
             for (int i = 0; i < fields.Length; i++)
             {
-                fields[i].Bake();
+                fields[i].Initialize();
+                fields[i].BakeGravity();
+                fields[i].GenerateTexture();
             }
         }
 
@@ -207,20 +224,31 @@ namespace Ricercar.Gravity
         {
             Attractor[] attractors = FindObjectsOfType<Attractor>();
 
+            for (int i = 0; i < attractors.Length; i++)
+            {
+                if (attractors[i].IsStatic)
+                    AddAttractor(attractors[i]);
+            }
+        }
+
+        [Button]
+        public void ToggleDisplays()
+        {
+            bool display = !m_displayData;
+
             GravityField[] fields = FindObjectsOfType<GravityField>();
 
             for (int i = 0; i < fields.Length; i++)
             {
-                for (int j = 0; j < attractors.Length; j++)
-                {
-                    if (attractors[j].IsStatic)
-                        fields[i].AddAttractor(attractors[j]);
-                }
+                fields[i].SetDisplayData(display);
             }
         }
 
         public void BakeGravity()
         {
+            m_gravityPoints = new Vector2[m_resolution * m_resolution];
+            m_positions = new Vector2[m_resolution * m_resolution];
+
             Vector2 zero = Vector2.zero;
 
             float cellSize = CellSize;
@@ -231,21 +259,19 @@ namespace Ricercar.Gravity
                 {
                     SetGravityPoint(x, y, zero);
 
-                    for (int i = 0; i < m_attractors.Count; i++)
+                    for (int i = 0; i < m_staticAttractors.Count; i++)
                     {
                         Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
 
                         SetPosition(x, y, pos);
-                        AddToGravityPoint(x, y, m_attractors[i].GetGravity(pos));
+                        AddToGravityPoint(x, y, m_staticAttractors[i].CalculateGravitationalForce(pos));
                     }
                 }
             }
-        }
 
-        public void AddAttractor(Attractor attractor)
-        {
-            if (!m_attractors.Contains(attractor))
-                m_attractors.Add(attractor);
+#if UNITY_EDITOR
+            EditorUtility.SetDirty(this);
+#endif
         }
 
         /// <summary>
@@ -253,26 +279,13 @@ namespace Ricercar.Gravity
         /// </summary>
         public bool Contains(Vector2 pos)
         {
-            return (pos.x >= m_bottomLeft.x && pos.x <= m_topRight.x && pos.y >= m_bottomLeft.y && pos.y <= m_topRight.y);
+            return pos.x >= m_bottomLeft.x && pos.x <= m_topRight.x && pos.y >= m_bottomLeft.y && pos.y <= m_topRight.y;
         }
 
         /// <summary>
-        /// Given indices of the discrete grid, return which world space point it represents.
-        /// 
-        /// Returns the zero vector if the indices are invalid.
+        /// Given a world position, returns the grid coordinates. Always rounds down.
         /// </summary>
-        public Vector2 GetWorldPosition(int x, int y)
-        {
-            if (x < 0 || x > m_resolution || y < 0 || y > m_resolution)
-                return Vector2.zero;
-
-            return GetPosition(x, y);
-        }
-
-        /// <summary>
-        /// Given a world position, returns the grid coordinates.
-        /// </summary>
-        public (int, int) GetCell(Vector2 worldPos)
+        private (int, int) GetCell(Vector2 worldPos)
         {
             // determine which cell we're in
 
@@ -280,21 +293,10 @@ namespace Ricercar.Gravity
                 Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.y, m_topRight.y, worldPos.y) * (m_resolution - 1f)));
         }
 
-        public static Vector2 GetGravity(Vector2 worldPos)
-        {
-            for (int i = 0; i < m_allFields.Count; i++)
-            {
-                if (m_allFields[i].Contains(worldPos))
-                    return m_allFields[i].SampleGravityAt(worldPos);
-            }
-
-            return Vector2.zero;
-        }
-
         /// <summary>
         /// Sample from the grid using bilinear interpolation.
         /// </summary>
-        public Vector2 SampleGravityAt(Vector2 worldPos)
+        private Vector2 SampleGravityAt(Vector2 worldPos)
         {
             (int x0, int y0) = GetCell(worldPos);
 
@@ -325,11 +327,121 @@ namespace Ricercar.Gravity
             return Vector2.Lerp(lerp_bottom, lerp_top, y_t);
         }
 
+        #region Static Methods
+
+        /// <summary>
+        /// Add an attractor to the gravity field system.
+        /// </summary>
+        public static void AddAttractor(Attractor attractor)
+        {
+            if (attractor.IsStatic && !m_staticAttractors.Contains(attractor))
+                m_staticAttractors.Add(attractor);
+
+            if (!m_allAttractors.Contains(attractor))
+                m_allAttractors.Add(attractor);
+        }
+
+        /// <summary>
+        /// Remove an attractor from the gravity field system. This won't do much
+        /// if you remove a static attractor.
+        /// </summary>
+        public static void RemoveAttractor(Attractor attractor)
+        {
+            if (attractor.IsStatic)
+                m_staticAttractors.Remove(attractor);
+
+            m_allAttractors.Remove(attractor);
+        }
+
+        /// <summary>
+        /// Gets the total gravity at the given position. Optionally can ignore given attractors.
+        /// </summary>
+        public static Vector2 GetGravity(Vector2 position, params Attractor[] ignore)
+        {
+            Vector2 gravityForce = Vector3.zero;
+
+            gravityForce += GetStaticGravity(position);
+            gravityForce += GetDynamicGravity(position, ignore);
+
+            return gravityForce;
+        }
+
+        /// <summary>
+        /// Get the gravity for the given attractor, both static and dynamic.
+        /// </summary>
+        public static Vector2 GetGravity(Attractor attractor)
+        {
+            return GetGravity(attractor.Position, attractor);
+        }
+
+        /// <summary>
+        /// Returns only the "baked" gravity of objects which don't actively influence the gravity field.
+        /// </summary>
+        public static Vector2 GetStaticGravity(Vector2 worldPos)
+        {
+            for (int i = 0; i < m_allFields.Count; i++)
+            {
+                if (m_allFields[i].Contains(worldPos))
+                {
+                    return m_allFields[i].SampleGravityAt(worldPos);
+                }
+            }
+
+            return GetDynamicGravity(worldPos);
+        }
+
+        /// <summary>
+        /// Returns the dynamic gravity at the given position. Dynamic here means unbaked, it's more expensive. It's literally
+        /// calculating the gravitational attraction to every other attractor!
+        /// </summary>
+        public static Vector2 GetDynamicGravity(Vector2 position, params Attractor[] ignore)
+        {
+            Vector2 result = Vector2.zero;
+
+            for (int i = 0; i < m_allAttractors.Count; i++)
+            {
+                Attractor attractor = m_allAttractors[i];
+
+                if (attractor.IsStatic)
+                    continue;
+
+                if (!attractor.AffectsFields)
+                    continue;
+
+                if (!ignore.IsNullOrEmpty())
+                {
+                    bool found = false;
+                    for (int j = 0; j < ignore.Length; j++)
+                    {
+                        if (ignore[j] == attractor)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                        continue;
+                }
+
+                result += attractor.CalculateGravitationalForce(position);
+            }
+
+            return result;
+        }
+
+        #endregion
+
+        #region Texture
+
+        /// <summary>
+        /// Create a square texture representing the static gravitational field, with the given size.
+        /// </summary>
         private Texture2D CreateTexture(int size)
         {
             Texture2D texture = new Texture2D(size, size);
             Color[] colours = new Color[size * size];
-            
+
             for (int x = 0; x < size; x++)
             {
                 float worldX = Mathf.Lerp(m_bottomLeft.x, m_topRight.x, x / (size - 1f));
@@ -338,7 +450,7 @@ namespace Ricercar.Gravity
                 {
                     float worldY = Mathf.Lerp(m_bottomLeft.y, m_topRight.y, y / (size - 1f));
 
-                    colours[x + y * size] = GravityToColour(SampleGravityAt(new Vector2(worldX, worldY)));
+                    colours[x + y * size] = GravityToColour(SampleGravityAt(new Vector2(worldX, worldY)), 0.03f);
                 }
             }
 
@@ -348,10 +460,13 @@ namespace Ricercar.Gravity
             return texture;
         }
 
-        private Color GravityToColour(Vector2 gravity)
+        /// <summary>
+        /// Convert a 2d direction vector to an arbitrary colour.
+        /// </summary>
+        private Color GravityToColour(Vector2 gravity, float scalar = 1f)
         {
-            float left = 0f;
-            float right = 0f;
+            float left;
+            float right;
 
             if (gravity.x < 0f)
             {
@@ -364,8 +479,8 @@ namespace Ricercar.Gravity
                 right = gravity.x;
             }
 
-            float up = 0f;
-            float down = 0f;
+            float up;
+            float down;
 
             if (gravity.y < 0f)
             {
@@ -380,6 +495,11 @@ namespace Ricercar.Gravity
 
             Color result = new Color(0f, 0f, 0f, 1f);
 
+            left *= scalar;
+            up *= scalar;
+            down *= scalar;
+            right *= scalar;
+
             result = Color.Lerp(result, Color.blue, left);
             result = Color.Lerp(result, Color.green, up);
             result = Color.Lerp(result, Color.red, down);
@@ -387,6 +507,23 @@ namespace Ricercar.Gravity
 
             return result;
         }
+
+        #endregion
+
+        #region Editor Stuff
+
+        public void SetDisplayData(bool isDisplaying)
+        {
+            m_displayData = isDisplaying;
+
+            OnDisplayDataChanged();
+        }
+
+        private void OnDisplayDataChanged()
+        {
+            m_quad.gameObject.SetActive(m_displayData);
+        }
+
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
@@ -396,5 +533,6 @@ namespace Ricercar.Gravity
             Handles.DrawAAPolyLine(m_bottomLeft, m_topLeft, m_topRight, m_bottomRight, m_bottomLeft);
         }
 #endif
+        #endregion
     }
 }

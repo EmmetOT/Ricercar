@@ -11,8 +11,7 @@ namespace Ricercar.Gravity
         private static Gradient m_colourGradient;
 
         [SerializeField]
-        [Layer]
-        private int m_visualizeForLayer;
+        private bool m_staticOnly = false;
 
         [SerializeField]
         private bool m_showField = false;
@@ -56,11 +55,11 @@ namespace Ricercar.Gravity
         {
             if (!m_showField)
                 return;
-            
+
             Vector2 bottomLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 0f, 10f));
             Vector2 topLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 1f, 10f));
             Vector2 bottomRight = m_camera.ViewportToWorldPoint(new Vector3(1f, 0f, 10f));
-            
+
             Vector2 xComponent = Vector2.Lerp(bottomLeft, bottomRight, 1f / (m_fieldResolution - 1f)) - bottomLeft;
             Vector2 yComponent = Vector2.Lerp(bottomLeft, topLeft, 1f / (m_fieldResolution - 1f)) - bottomLeft;
 
@@ -70,7 +69,12 @@ namespace Ricercar.Gravity
                 {
                     Vector2 pos = bottomLeft + xComponent * x + yComponent * y;
 
-                    Vector2 attraction = Attractor.GetDynamicGravity(pos/*, 1f*//*, layer: m_visualizeForLayer*/);
+                    Vector2 attraction;
+
+                    if (m_staticOnly)
+                        attraction = GravityField.GetStaticGravity(pos);
+                    else
+                        attraction = GravityField.GetGravity(pos);
 
                     if (attraction.magnitude * m_vectorScale <= m_minVectorMagnitude)
                         continue;

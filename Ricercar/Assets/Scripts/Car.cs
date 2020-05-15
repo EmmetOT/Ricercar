@@ -231,7 +231,7 @@ namespace Ricercar
         {
             Vector2 sum = Vector2.zero;
 
-            Vector2 currentDown = Attractor.GetGravity(m_attractor).normalized;
+            Vector2 currentDown = GravityField.GetGravity(m_attractor).normalized;
 
             if (currentDown.IsZero())
                 currentDown = Vector2.down;

@@ -71,7 +71,7 @@ namespace Ricercar
 
         private void FireStabilisers()
         {
-            Vector2 antiGravForce = Attractor.GetGravity(m_attractor);
+            Vector2 antiGravForce = GravityField.GetGravity(m_attractor);
             Vector2 dampingForce = m_attractor.Rigidbody.velocity * m_stabilisationDamping;
             Vector2 resultForce = antiGravForce + dampingForce;
 

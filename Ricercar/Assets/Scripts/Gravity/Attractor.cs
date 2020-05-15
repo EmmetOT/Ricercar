@@ -8,18 +8,17 @@ namespace Ricercar.Gravity
     [RequireComponent(typeof(Rigidbody2D))]
     public abstract class Attractor : MonoBehaviour
     {
-        public const float G = 667.4f;
-
-        private static List<Attractor> m_attractors = new List<Attractor>();
-
-
         [SerializeField]
         protected bool m_isStatic = false;
         public bool IsStatic => m_isStatic;
 
+        [SerializeField]
+        private bool m_applyForceToSelf = true;
+        public bool ApplyForceToSelf => m_applyForceToSelf;
 
-        //[SerializeField]
-        //private LayerMask m_affectLayers;
+        [SerializeField]
+        private bool m_affectsField = true;
+        public bool AffectsFields => m_affectsField;
 
         [SerializeField]
         [HideIf("m_static")]
@@ -40,14 +39,6 @@ namespace Ricercar.Gravity
         public Vector2 Position => m_rigidbody.position;
 
         [SerializeField]
-        private bool m_applyForceToSelf = true;
-
-        [SerializeField]
-        private bool m_affectsField = true;
-
-        public Vector2 CurrentGravity => GetGravity(this);
-
-        [SerializeField]
         private bool m_tracePath = false;
 
         private List<Vector3> m_pathPoints = new List<Vector3>();
@@ -56,20 +47,19 @@ namespace Ricercar.Gravity
 
         private float m_pathTraceTimer = 0f;
 
-        /// <summary>
-        /// Returns the gravity vector from the given point to this attractor. Also returns the point on the attractor which the
-        /// given point is being pulled towards.
-        /// </summary>
-        public abstract Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos);
+        private void Reset()
+        {
+            m_rigidbody = GetComponent<Rigidbody2D>();
+        }
 
         private void OnEnable()
         {
-            m_attractors.Add(this);
+            GravityField.AddAttractor(this);
         }
 
         private void OnDisable()
         {
-            m_attractors.Remove(this);
+            GravityField.RemoveAttractor(this);
         }
 
         private void Start()
@@ -100,60 +90,40 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            Vector2 gravityForce = GetGravity(m_rigidbody.position, ignore: this) * Mass;
+            Vector2 gravityForce = GravityField.GetGravity(m_rigidbody.position, this) * Mass;
 
             m_rigidbody.AddForce(gravityForce);
         }
 
-        public static Vector2 GetGravity(Vector2 position, Attractor ignore = null)
+        /// <summary>
+        /// Returns the gravity vector from the given point to this attractor. Also returns the point on the attractor which the
+        /// given point is being pulled towards.
+        /// </summary>
+        protected abstract Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos);
+
+        /// <summary>
+        /// Quick method to get just the gravity from the given position to this attractor.
+        /// </summary>
+        public virtual Vector2 CalculateGravitationalForce(Vector2 position, bool checkNeutralizers = false)
         {
-            Vector2 gravityForce = Vector3.zero;
+            if (!enabled)
+                return Vector2.zero;
 
-            gravityForce += GravityField.GetGravity(position);
-            gravityForce += GetDynamicGravity(position, ignore: ignore);
+            Vector2 gravity = GetGravityVector(position, out Vector2 gravitySource);
 
-            return gravityForce;
-        }
-        
-        public static Vector2 GetGravity(Attractor attractor)
-        {
-            return GetGravity(attractor.Position, attractor);
-        }
+            if (checkNeutralizers && Neutralizer.IsNeutralized(position, gravitySource))
+                return Vector2.zero;
 
-        public static Vector2 GetDynamicGravity(Vector2 position, Attractor ignore = null)
-        {
-            Vector2 result = Vector2.zero;
+            float sqrMagnitude = gravity.sqrMagnitude;
 
-            for (int i = 0; i < m_attractors.Count; i++)
-            {
-                Attractor attractor = m_attractors[i];
+            if (sqrMagnitude == 0f)
+                return Vector2.zero;
 
-                if (attractor.IsStatic)
-                    continue;
+            Vector2 direction = gravity.normalized;
 
-                if ((ignore != null && attractor == ignore) || !attractor.m_affectsField)
-                    continue;
-                
-                float attractorMass = attractor.Mass;
+            float forceMagnitude = GravityField.G * Mass / sqrMagnitude;
 
-                Vector2 difference = attractor.GetGravityVector(position, out Vector2 gravitySource);
-
-                if (Neutralizer.IsNeutralized(position, gravitySource))
-                    continue;
-
-                float sqrMagnitude = difference.sqrMagnitude;
-
-                if (sqrMagnitude == 0f)
-                    continue;
-
-                Vector2 direction = difference.normalized;
-
-                float forceMagnitude = (G * attractorMass) / sqrMagnitude;
-
-                result += direction * forceMagnitude;
-            }
-
-            return result;
+            return direction * forceMagnitude;
         }
 
 #if UNITY_EDITOR
@@ -175,33 +145,5 @@ namespace Ricercar.Gravity
             }
         }
 #endif
-
-        /// <summary>
-        /// Quick method to get just the gravity from the given position to this attractor.
-        /// </summary>
-        public Vector2 GetGravity(Vector2 position, bool checkNeutralizers = false)
-        {
-            Vector2 difference = GetGravityVector(position, out Vector2 gravitySource);
-            
-            if (checkNeutralizers && Neutralizer.IsNeutralized(position, gravitySource))
-                return Vector2.zero;
-            
-            float sqrMagnitude = difference.sqrMagnitude;
-
-            if (sqrMagnitude == 0f)
-                return Vector2.zero;
-
-            Vector2 direction = difference.normalized;
-            
-            float forceMagnitude = G * Mass / sqrMagnitude;
-
-            return direction * forceMagnitude;
-        }
-
-        [Button]
-        private void PrintCurrentGravity()
-        {
-            Debug.Log(CurrentGravity);
-        }
     }
 }

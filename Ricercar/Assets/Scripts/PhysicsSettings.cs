@@ -97,99 +97,99 @@ namespace Ricercar
         [OnValueChanged("UpdateRopeLauncher")]
         private float m_ropeThickness = 1f;
 
-        #region Events
+        //#region Events
 
-        private void OnEnable()
-        {
-            SynchronizeValues();
-        }
+        //private void OnEnable()
+        //{
+        //    SynchronizeValues();
+        //}
 
-        private void Awake()
-        {
-            SynchronizeValues();
-        }
+        //private void Awake()
+        //{
+        //    SynchronizeValues();
+        //}
 
-        [Button("Synchronize Values")]
-        private void SynchronizeValues()
-        {
-            Debug.Log("Synchronizing...");
+        //[Button("Synchronize Values")]
+        //private void SynchronizeValues()
+        //{
+        //    Debug.Log("Synchronizing...");
 
-            m_physicsTimestep = Time.fixedDeltaTime;
+        //    m_physicsTimestep = Time.fixedDeltaTime;
 
-            if (m_obiFixedUpdater != null)
-            {
-                m_substepUnityPhysics = m_obiFixedUpdater.substepUnityPhysics;
-                m_solverSubsteps = m_obiFixedUpdater.substeps;
-            }
+        //    if (m_obiFixedUpdater != null)
+        //    {
+        //        m_substepUnityPhysics = m_obiFixedUpdater.substepUnityPhysics;
+        //        m_solverSubsteps = m_obiFixedUpdater.substeps;
+        //    }
 
-            if (m_obiSolver != null)
-            {
-                m_distanceContraintIterations = m_obiSolver.distanceConstraintParameters.iterations;
-                m_distanceConstraintEvaluationOrder = m_obiSolver.distanceConstraintParameters.evaluationOrder;
-            }
+        //    if (m_obiSolver != null)
+        //    {
+        //        m_distanceContraintIterations = m_obiSolver.distanceConstraintParameters.iterations;
+        //        m_distanceConstraintEvaluationOrder = m_obiSolver.distanceConstraintParameters.evaluationOrder;
+        //    }
 
-            if (m_carPrefabRigidbody != null)
-            {
-                m_carRigidbodyMass = m_carPrefabRigidbody.mass;
-                m_carLinearDrag = m_carPrefabRigidbody.drag;
-                m_carAngularDrag = m_carPrefabRigidbody.angularDrag;
-            }
+        //    if (m_carPrefabRigidbody != null)
+        //    {
+        //        m_carRigidbodyMass = m_carPrefabRigidbody.mass;
+        //        m_carLinearDrag = m_carPrefabRigidbody.drag;
+        //        m_carAngularDrag = m_carPrefabRigidbody.angularDrag;
+        //    }
 
-            if (m_ropeLauncherPrefab != null)
-            {
-                m_tightenAfterLaunch = m_ropeLauncherPrefab.TightenAfterLaunch;
-                m_ropeSizeChangeSpeed = m_ropeLauncherPrefab.RopeSizeChangeSpeed;
-                m_ropeTightenTarget = m_ropeLauncherPrefab.RopeTightenTarget;
-                m_ropeResolution = m_ropeLauncherPrefab.RopeResolution;
-                m_ropeThickness = m_ropeLauncherPrefab.RopeThickness;
-            }
-        }
+        //    if (m_ropeLauncherPrefab != null)
+        //    {
+        //        m_tightenAfterLaunch = m_ropeLauncherPrefab.TightenAfterLaunch;
+        //        m_ropeSizeChangeSpeed = m_ropeLauncherPrefab.RopeSizeChangeSpeed;
+        //        m_ropeTightenTarget = m_ropeLauncherPrefab.RopeTightenTarget;
+        //        m_ropeResolution = m_ropeLauncherPrefab.RopeResolution;
+        //        m_ropeThickness = m_ropeLauncherPrefab.RopeThickness;
+        //    }
+        //}
 
-        private void UpdatePhysics()
-        {
-            Time.fixedDeltaTime = m_physicsTimestep;
-        }
+        //private void UpdatePhysics()
+        //{
+        //    Time.fixedDeltaTime = m_physicsTimestep;
+        //}
 
-        private void UpdateFixedUpdater()
-        {
-            if (m_obiFixedUpdater != null)
-            {
-                m_obiFixedUpdater.substepUnityPhysics = m_substepUnityPhysics;
-                m_obiFixedUpdater.substeps = m_solverSubsteps;
-            }
-        }
+        //private void UpdateFixedUpdater()
+        //{
+        //    if (m_obiFixedUpdater != null)
+        //    {
+        //        m_obiFixedUpdater.substepUnityPhysics = m_substepUnityPhysics;
+        //        m_obiFixedUpdater.substeps = m_solverSubsteps;
+        //    }
+        //}
 
-        private void UpdateSolver()
-        {
-            if (m_obiSolver != null)
-            {
-                m_obiSolver.distanceConstraintParameters.iterations = m_distanceContraintIterations;
-                m_obiSolver.distanceConstraintParameters.evaluationOrder = m_distanceConstraintEvaluationOrder;
-            }
-        }
+        //private void UpdateSolver()
+        //{
+        //    if (m_obiSolver != null)
+        //    {
+        //        m_obiSolver.distanceConstraintParameters.iterations = m_distanceContraintIterations;
+        //        m_obiSolver.distanceConstraintParameters.evaluationOrder = m_distanceConstraintEvaluationOrder;
+        //    }
+        //}
 
-        private void UpdateCarRigidbody()
-        {
-            if (m_carPrefabRigidbody != null)
-            {
-                m_carPrefabRigidbody.mass = m_carRigidbodyMass;
-                m_carPrefabRigidbody.drag = m_carLinearDrag;
-                m_carPrefabRigidbody.angularDrag = m_carAngularDrag;
-            }
-        }
+        //private void UpdateCarRigidbody()
+        //{
+        //    if (m_carPrefabRigidbody != null)
+        //    {
+        //        m_carPrefabRigidbody.mass = m_carRigidbodyMass;
+        //        m_carPrefabRigidbody.drag = m_carLinearDrag;
+        //        m_carPrefabRigidbody.angularDrag = m_carAngularDrag;
+        //    }
+        //}
 
-        private void UpdateRopeLauncher()
-        {
-            if (m_ropeLauncherPrefab != null)
-            {
-                m_ropeLauncherPrefab.TightenAfterLaunch = m_tightenAfterLaunch;
-                m_ropeLauncherPrefab.RopeSizeChangeSpeed = m_ropeSizeChangeSpeed;
-                m_ropeLauncherPrefab.RopeTightenTarget = m_ropeTightenTarget;
-                m_ropeLauncherPrefab.RopeResolution = m_ropeResolution;
-                m_ropeLauncherPrefab.RopeThickness = m_ropeThickness;
-            }
-        }
+        //private void UpdateRopeLauncher()
+        //{
+        //    if (m_ropeLauncherPrefab != null)
+        //    {
+        //        m_ropeLauncherPrefab.TightenAfterLaunch = m_tightenAfterLaunch;
+        //        m_ropeLauncherPrefab.RopeSizeChangeSpeed = m_ropeSizeChangeSpeed;
+        //        m_ropeLauncherPrefab.RopeTightenTarget = m_ropeTightenTarget;
+        //        m_ropeLauncherPrefab.RopeResolution = m_ropeResolution;
+        //        m_ropeLauncherPrefab.RopeThickness = m_ropeThickness;
+        //    }
+        //}
 
-        #endregion
+        //#endregion
     }
 }

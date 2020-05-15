@@ -46,7 +46,7 @@ namespace Ricercar
 
             if (m_rotateWithGravity)
             {
-                Vector2 gravity = Attractor.GetGravity(m_transform.position);
+                Vector2 gravity = GravityField.GetGravity(m_transform.position);
 
                 if (gravity.IsZero())
                     gravity = Vector2.down;

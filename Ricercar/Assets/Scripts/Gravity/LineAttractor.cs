@@ -8,17 +8,19 @@ namespace Ricercar.Gravity
     public class LineAttractor : Attractor
     {
         [SerializeField]
+        [BoxGroup("Line")]
         private Transform m_startPoint;
 
         [SerializeField]
+        [BoxGroup("Line")]
         private Transform m_endPoint;
 
-        [BoxGroup("Dead Zone")]
+        [BoxGroup("Line")]
         [SerializeField]
         [MinValue(0f)]
         private float m_deadZoneMagnitude = 0.1f;
 
-        [BoxGroup("Dead Zone")]
+        [BoxGroup("Line")]
         [SerializeField]
         [MinValue(0f)]
         private float m_deadZoneSteepness = 1000f;
@@ -36,7 +38,7 @@ namespace Ricercar.Gravity
         }
 #endif
 
-        public override Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos)
+        protected override Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos)
         {
             sourcePos = Utils.ProjectPointOnLineSegment(m_startPoint.position, m_endPoint.position, from);
             Vector2 result = sourcePos - from;
