@@ -1,10 +1,12 @@
-﻿Shader "BlackShamrock/Runequest/GravityFieldShader"
+﻿Shader "Ricercar/GravityFieldShader"
 {
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
 		
-		_PointCount("Point Count", int) = 0
+		_FieldSize("Field Size", int) = 0
+		_ColourScale("Colour Scale", float) = 1
+		[Toggle(IS_DISTORTION_MAP)] _IsDistortionMap("Is Distortion Map", float) = 0
 	}
 
 	SubShader
@@ -33,7 +35,24 @@
 			#pragma multi_compile_particles
 			#pragma multi_compile_fog
 
+			#pragma shader_feature IS_DISTORTION_MAP
+
 			#include "UnityCG.cginc"
+			
+			inline float invLerp(float from, float to, float value) 
+			{
+				return (value - from) / (to - from);
+			}
+			
+			inline float4 invLerp(float4 from, float4 to, float value)
+			{
+				return float4(invLerp(from.x, to.x, value), invLerp(from.y, to.y, value), invLerp(from.z, to.z, value), invLerp(from.w, to.w, value));
+			}
+
+			inline float4 invLerp(float3 from, float3 to, float value)
+			{
+				return float4(invLerp(from.x, to.x, value), invLerp(from.y, to.y, value), invLerp(from.z, to.z, value), 1);
+			}
 
 			struct appdata_t
 			{
@@ -53,9 +72,10 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 
-			uniform float4 _Points[20];
+			uniform StructuredBuffer<float2> _Points;
 
-			uniform int _PointCount;
+			uniform int _FieldSize;
+			uniform float _ColourScale;
 
 			v2f vert(appdata_t v)
 			{
@@ -69,31 +89,78 @@
 
 			fixed4 frag(v2f i) : SV_Target
 			{
-				float4 col = tex2D(_MainTex, i.uv);
+				int fieldSizeMinus1 = _FieldSize - 1;
 
-				UNITY_APPLY_FOG_COLOR(i.fogCoord, col, (fixed4)1);
+				int x0 = floor(i.uv.x * fieldSizeMinus1);
+				int y0 = floor(i.uv.y * fieldSizeMinus1);
 
-				float2 texPos = float2(i.uv.x, i.uv.y);
+				int x1 = min(fieldSizeMinus1, x0 + 1);
+				int y1 = min(fieldSizeMinus1, y0 + 1);
+				
+				// binomial interpolation
 
-				// G = 667.4f;
+				float x_t = invLerp(x0, x1, i.uv.x * fieldSizeMinus1);
+				float y_t = invLerp(y0, y1, i.uv.y * fieldSizeMinus1);
+				
+				float2 gravityBottomLeft = _Points[y0 * _FieldSize + x0];
+				float2 gravityBottomRight = _Points[y0 * _FieldSize + x1];
+				float2 gravityTopLeft = _Points[y1 * _FieldSize + x0];
+				float2 gravityTopRight = _Points[y1 * _FieldSize + x1];
 
-				for (int j = 0; j < 2; j++)//
+				float2 lerp_bottom = lerp(gravityBottomLeft, gravityBottomRight, x_t);
+				float2 lerp_top = lerp(gravityTopLeft, gravityTopRight, x_t);
+
+				float4 gravity = float4(lerp(lerp_bottom, lerp_top, y_t), 0, 1);
+
+			#ifdef IS_DISTORTION_MAP
+				gravity *= _ColourScale;
+				gravity.a = 1;
+
+				return gravity;
+			#else
+
+				float left;
+				float right;
+
+				if (gravity.x < 0)
 				{
-					float4 data = _Points[j];
-
-					float2 attractorPos = float2(data.x, data.y);
-					float attractorMass = data.z;
-
-					float2 difference = attractorPos - texPos;
-					
-					float forceMagnitude = (667.4 * attractorMass) / dot(difference, difference);
-
-					float2 result = normalize(difference) * forceMagnitude;
-
-					col += float4(result.x, result.y, 0, 1);
+					left = -gravity.x;
+					right = 0;
+				}
+				else
+				{
+					left = 0;
+					right = gravity.x;
 				}
 
-				return col;
+				float up;
+				float down;
+
+				if (gravity.y < 0)
+				{
+					down = -gravity.y;
+					up = 0;
+				}
+				else
+				{
+					down = 0;
+					up = gravity.y;
+				}
+
+				float4 result = float4(0, 0, 0, 1);
+
+				left *= _ColourScale;
+				up *= _ColourScale;
+				down *= _ColourScale;
+				right *= _ColourScale;
+
+				result = lerp(result, float4(0, 0, 1, 1), left);
+				result = lerp(result, float4(0, 1, 0, 1), up);
+				result = lerp(result, float4(1, 0, 0, 1), down);
+				result = lerp(result, float4(1, 1, 0, 1), right);
+
+				return result;
+			#endif
 			}
 
 			ENDCG

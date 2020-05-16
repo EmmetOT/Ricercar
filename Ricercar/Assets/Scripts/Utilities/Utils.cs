@@ -113,6 +113,39 @@ namespace Ricercar
             return vec == Vector2.zero;
         }
 
+
+        /// <summary>
+        /// Set the x ordinate of this vector.
+        /// </summary>
+        public static Vector4 SetX(this Vector4 vec, float x)
+        {
+            return new Vector4(x, vec.y, vec.z, vec.w);
+        }
+
+        /// <summary>
+        /// Set the y ordinate of this vector.
+        /// </summary>
+        public static Vector4 SetY(this Vector4 vec, float y)
+        {
+            return new Vector4(vec.x, y, vec.z, vec.w);
+        }
+
+        /// <summary>
+        /// Set the z ordinate of this vector.
+        /// </summary>
+        public static Vector4 SetZ(this Vector4 vec, float z)
+        {
+            return new Vector4(vec.x, vec.y, z, vec.w);
+        }
+
+        /// <summary>
+        /// Set the w ordinate of this vector.
+        /// </summary>
+        public static Vector4 SetW(this Vector4 vec, float w)
+        {
+            return new Vector4(vec.x, vec.y, vec.z, w);
+        }
+
         /// <summary>
         /// Set the x ordinate of this vector.
         /// </summary>
@@ -175,6 +208,7 @@ namespace Ricercar
         {
             return new Vector2(vec.x, y);
         }
+
         /// <summary>
         /// Inverse lerp function for Vector3. Given a vector A and a vector B and a colinear vector 
         /// between them, return the value which would be required to lerp from A to B.

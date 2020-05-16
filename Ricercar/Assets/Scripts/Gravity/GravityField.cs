@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -25,26 +26,29 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         [MinValue(1)]
-        private int m_resolution = 2048;
+        [UnityEngine.Serialization.FormerlySerializedAs("m_resolution")]
+        private int m_gravityResolution = 2048;
 
         [SerializeField]
         [MinValue(1)]
         private int m_textureResolution = 128;
 
         [SerializeField]
-        [MinValue(0f)]
-        private float m_size = 1f;
+        private Shader m_shader;
 
         [SerializeField]
-        [ReadOnly]
-        private Texture2D m_texture;
+        [MinValue(0f)]
+        private float m_size = 1f;
 
         [SerializeField]
         [OnValueChanged("OnDisplayDataChanged")]
         private bool m_displayData = true;
 
         [SerializeField]
-        private Renderer m_quad;
+        private RawImage m_rawImage;
+
+        //[SerializeField]
+        //private RenderTexture m_renderTexture;
 
         [SerializeField]
         private Material m_sharedMaterial;
@@ -53,7 +57,7 @@ namespace Ricercar.Gravity
         [HideInInspector]
         private Material m_displayMaterial;
 
-        public float CellSize => m_size / (m_resolution - 1);
+        public float CellSize => m_size / (m_gravityResolution - 1);
 
         [SerializeField]
         [HideInInspector]
@@ -67,11 +71,11 @@ namespace Ricercar.Gravity
         // [ (0, 0) ] [ (1, 0) ] [ (2, 0) ]
 
         [SerializeField]
-        //[HideInInspector]
+        [HideInInspector]
         private Vector2[] m_gravityPoints;
 
         [SerializeField]
-        //[HideInInspector]
+        [HideInInspector]
         private Vector2[] m_positions;
 
         [SerializeField]
@@ -90,7 +94,16 @@ namespace Ricercar.Gravity
         [HideInInspector]
         private Vector2 m_topLeft;
 
+        [SerializeField]
+        private GravityFieldTextureCreator m_textureCreator;
+
+
         #region Unity Callbacks
+
+        private void Reset()
+        {
+            m_textureCreator = new GravityFieldTextureCreator(m_shader);
+        }
 
         private void Awake()
         {
@@ -118,34 +131,26 @@ namespace Ricercar.Gravity
 
         private Vector2 GetGravityPoint(int x, int y)
         {
-            return m_gravityPoints[y * m_resolution + x];
+            return m_gravityPoints[y * m_gravityResolution + x];
         }
         private void SetGravityPoint(int x, int y, Vector2 gravityPoint)
         {
-            m_gravityPoints[y * m_resolution + x] = gravityPoint;
+            m_gravityPoints[y * m_gravityResolution + x] = gravityPoint;
         }
 
         private void AddToGravityPoint(int x, int y, Vector2 gravityPoint)
         {
-            m_gravityPoints[y * m_resolution + x] += gravityPoint;
+            m_gravityPoints[y * m_gravityResolution + x] += gravityPoint;
         }
 
         private Vector2 GetPosition(int x, int y)
         {
-
-            if (m_positions.IsOutOfRange(y * m_resolution + x))
-            {
-                Debug.Log((y * m_resolution + x) + " is out of range of " + m_positions.Length);
-                Debug.Log("X = " + x + ", " + y);
-            }
-
-
-            return m_positions[y * m_resolution + x];
+            return m_positions[y * m_gravityResolution + x];
         }
 
         private void SetPosition(int x, int y, Vector2 position)
         {
-            m_positions[y * m_resolution + x] = position;
+            m_positions[y * m_gravityResolution + x] = position;
         }
 
         #endregion
@@ -180,34 +185,10 @@ namespace Ricercar.Gravity
             m_topLeft = GetTopLeft();
         }
 
-        private void GenerateTexture()
-        {
-            Debug.Log("Setting texture.");
-
-            m_texture = CreateTexture(m_textureResolution);
-
-            m_quad.gameObject.SetActive(m_displayData);
-            m_quad.transform.localScale = Vector3.one * m_size;
-
-            if (m_displayMaterial != null)
-            {
-                if (!Application.isPlaying)
-                    DestroyImmediate(m_displayMaterial);
-                else
-                    Destroy(m_displayMaterial);
-            }
-
-            m_displayMaterial = new Material(m_sharedMaterial);
-
-            m_quad.material = m_displayMaterial;
-
-            m_displayMaterial.SetTexture("_MainTex", m_texture);
-        }
-
         [Button]
         public void BakeAll()
         {
-            FindAllStaticAttractors();
+            FindAllAttractors();
 
             GravityField[] fields = FindObjectsOfType<GravityField>();
 
@@ -220,14 +201,16 @@ namespace Ricercar.Gravity
         }
 
         [Button]
-        public void FindAllStaticAttractors()
+        public void FindAllAttractors()
         {
             Attractor[] attractors = FindObjectsOfType<Attractor>();
 
+            m_allAttractors.Clear();
+            m_staticAttractors.Clear();
+
             for (int i = 0; i < attractors.Length; i++)
             {
-                if (attractors[i].IsStatic)
-                    AddAttractor(attractors[i]);
+                AddAttractor(attractors[i]);
             }
         }
 
@@ -246,16 +229,16 @@ namespace Ricercar.Gravity
 
         public void BakeGravity()
         {
-            m_gravityPoints = new Vector2[m_resolution * m_resolution];
-            m_positions = new Vector2[m_resolution * m_resolution];
+            m_gravityPoints = new Vector2[m_gravityResolution * m_gravityResolution];
+            m_positions = new Vector2[m_gravityResolution * m_gravityResolution];
 
             Vector2 zero = Vector2.zero;
 
             float cellSize = CellSize;
 
-            for (int x = 0; x < m_resolution; x++)
+            for (int x = 0; x < m_gravityResolution; x++)
             {
-                for (int y = 0; y < m_resolution; y++)
+                for (int y = 0; y < m_gravityResolution; y++)
                 {
                     SetGravityPoint(x, y, zero);
 
@@ -289,8 +272,8 @@ namespace Ricercar.Gravity
         {
             // determine which cell we're in
 
-            return (Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.x, m_topRight.x, worldPos.x) * (m_resolution - 1f)),
-                Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.y, m_topRight.y, worldPos.y) * (m_resolution - 1f)));
+            return (Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.x, m_topRight.x, worldPos.x) * (m_gravityResolution - 1f)),
+                Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.y, m_topRight.y, worldPos.y) * (m_gravityResolution - 1f)));
         }
 
         /// <summary>
@@ -300,10 +283,10 @@ namespace Ricercar.Gravity
         {
             (int x0, int y0) = GetCell(worldPos);
 
-            if (x0 >= m_resolution - 1)
+            if (x0 >= m_gravityResolution - 1)
                 x0--;
 
-            if (y0 >= m_resolution - 1)
+            if (y0 >= m_gravityResolution - 1)
                 y0--;
 
             if (x0 < 0 || y0 < 0)
@@ -315,14 +298,20 @@ namespace Ricercar.Gravity
             int x1 = x0 + 1;
             int y1 = y0 + 1;
 
+            // first step is to get the normalized position in this 'quadrant' of the field
+
             Vector2 bottomLeft = GetPosition(x0, y0);
             Vector2 topRight = GetPosition(x1, y1);
 
             float x_t = Mathf.InverseLerp(bottomLeft.x, topRight.x, worldPos.x);
             float y_t = Mathf.InverseLerp(bottomLeft.y, topRight.y, worldPos.y);
 
+            // using these values we lerp first across the x axis, on the top and bottom of this quadrant
+
             Vector2 lerp_bottom = Vector2.Lerp(GetGravityPoint(x0, y0), GetGravityPoint(x1, y0), x_t);
-            Vector2 lerp_top = Vector2.Lerp(GetGravityPoint(x0, y0), GetGravityPoint(x1, y1), x_t);
+            Vector2 lerp_top = Vector2.Lerp(GetGravityPoint(x0, y1), GetGravityPoint(x1, y1), x_t);
+
+            // finally we lerp between these two positions to get the interpolated position
 
             return Vector2.Lerp(lerp_bottom, lerp_top, y_t);
         }
@@ -387,7 +376,7 @@ namespace Ricercar.Gravity
                 }
             }
 
-            return GetDynamicGravity(worldPos);
+            return Vector2.zero;
         }
 
         /// <summary>
@@ -437,76 +426,90 @@ namespace Ricercar.Gravity
         /// <summary>
         /// Create a square texture representing the static gravitational field, with the given size.
         /// </summary>
-        private Texture2D CreateTexture(int size)
+        private void GenerateTexture()
         {
-            Texture2D texture = new Texture2D(size, size);
-            Color[] colours = new Color[size * size];
+            //RenderTexture result = m_textureCreator.GenerateTextureFromField(m_gravityPoints, m_resolution);
 
-            for (int x = 0; x < size; x++)
-            {
-                float worldX = Mathf.Lerp(m_bottomLeft.x, m_topRight.x, x / (size - 1f));
+            //if (m_renderTexture != null)
+            //{
+            //    m_renderTexture.DiscardContents();
+            //}
 
-                for (int y = 0; y < size; y++)
-                {
-                    float worldY = Mathf.Lerp(m_bottomLeft.y, m_topRight.y, y / (size - 1f));
+            //m_renderTexture = new RenderTexture(m_textureResolution, m_textureResolution, 0);
+            //m_renderTexture.Create();
 
-                    colours[x + y * size] = GravityToColour(SampleGravityAt(new Vector2(worldX, worldY)), 0.03f);
-                }
-            }
+            //Graphics.CopyTexture(result, m_renderTexture);
 
-            texture.SetPixels(colours);
-            texture.Apply();
+            //m_renderTexture.name = name + "_RenderTexture";
+            //m_renderTexture = ;
 
-            return texture;
+            //RenderTexture active = RenderTexture.active;
+            //RenderTexture.active = m_textureCreator.GenerateTextureFromField(m_gravityPoints, m_resolution);
+
+            //Texture2D tex = new Texture2D(m_resolution, m_resolution);
+            //tex.ReadPixels(new Rect(0, 0, m_resolution, m_resolution), 0, 0, false);
+            //tex.Apply();
+
+            //RenderTexture.active = active;
+
+            m_rawImage.texture = m_textureCreator.GenerateTextureFromField(m_gravityPoints, m_gravityResolution, m_textureResolution);
+
+
+
+#if UNITY_EDITOR
+            EditorUtility.SetDirty(this);
+            EditorUtility.SetDirty(m_rawImage.texture);
+            EditorUtility.SetDirty(m_rawImage);
+#endif
         }
 
-        /// <summary>
-        /// Convert a 2d direction vector to an arbitrary colour.
-        /// </summary>
-        private Color GravityToColour(Vector2 gravity, float scalar = 1f)
-        {
-            float left;
-            float right;
+        ///// <summary>
+        ///// Convert a 2d direction vector to an arbitrary colour.
+        ///// </summary>
+        //private Color GravityToColour(Vector2 gravity, float scalar = 1f)
+        //{
+        //    float left;
+        //    float right;
 
-            if (gravity.x < 0f)
-            {
-                left = -gravity.x;
-                right = 0f;
-            }
-            else
-            {
-                left = 0f;
-                right = gravity.x;
-            }
+        //    if (gravity.x < 0f)
+        //    {
+        //        left = -gravity.x;
+        //        right = 0f;
+        //    }
+        //    else
+        //    {
+        //        left = 0f;
+        //        right = gravity.x;
+        //    }
 
-            float up;
-            float down;
+        //    float up;
+        //    float down;
 
-            if (gravity.y < 0f)
-            {
-                down = -gravity.y;
-                up = 0f;
-            }
-            else
-            {
-                down = 0f;
-                up = gravity.y;
-            }
+        //    if (gravity.y < 0f)
+        //    {
+        //        down = -gravity.y;
+        //        up = 0f;
+        //    }
+        //    else
+        //    {
+        //        down = 0f;
+        //        up = gravity.y;
+        //    }
 
-            Color result = new Color(0f, 0f, 0f, 1f);
+        //    Color result = new Color(0f, 0f, 0f, 1f);
 
-            left *= scalar;
-            up *= scalar;
-            down *= scalar;
-            right *= scalar;
+        //    left *= scalar;
+        //    up *= scalar;
+        //    down *= scalar;
+        //    right *= scalar;
 
-            result = Color.Lerp(result, Color.blue, left);
-            result = Color.Lerp(result, Color.green, up);
-            result = Color.Lerp(result, Color.red, down);
-            result = Color.Lerp(result, Color.yellow, right);
+        //    result = Color.Lerp(result, Color.blue, left);
+        //    result = Color.Lerp(result, Color.green, up);
+        //    result = Color.Lerp(result, Color.red, down);
+        //    result = Color.Lerp(result, Color.yellow, right);
 
-            return result;
-        }
+        //    return result;
+        //}
 
         #endregion
 
@@ -521,18 +524,18 @@ namespace Ricercar.Gravity
 
         private void OnDisplayDataChanged()
         {
-            m_quad.gameObject.SetActive(m_displayData);
+            m_rawImage.gameObject.SetActive(m_displayData);
         }
 
 
-#if UNITY_EDITOR
-        private void OnDrawGizmos()
-        {
-            Handles.color = Color.white;
+//#if UNITY_EDITOR
+//        private void OnDrawGizmos()
+//        {
+//            //Handles.color = Color.white;
 
-            Handles.DrawAAPolyLine(m_bottomLeft, m_topLeft, m_topRight, m_bottomRight, m_bottomLeft);
-        }
-#endif
+//            //Handles.DrawAAPolyLine(m_bottomLeft, m_topLeft, m_topRight, m_bottomRight, m_bottomLeft);
+//        }
+//#endif
         #endregion
     }
 }
