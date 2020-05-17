@@ -9,13 +9,14 @@ namespace Ricercar.Gravity
     [System.Serializable]
     public class GravityFieldTextureCreator
     {
-        private readonly Shader m_shader;
-
         public enum ColourMode
         {
             Distortion,
             Legible
         }
+
+        [SerializeField]
+        private Material m_sharedMaterial;
 
         [SerializeField]
         private Material m_material;
@@ -28,16 +29,11 @@ namespace Ricercar.Gravity
 
         private ComputeBuffer m_computeBuffer;
 
+        private const string GRID_TEXTURE_PROPERTY = "_MainTex";
         private const string POINT_ARRAY_PROPERTY = "_Points";
         private const string FIELD_SIZE_PROPERTY = "_FieldSize";
         private const string COLOUR_SCALE_PROPERTY = "_ColourScale";
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
-
-        public GravityFieldTextureCreator(Shader shader)
-        {
-            m_shader = shader;
-            m_material = new Material(m_shader);
-        }
 
         //~GravityFieldTextureCreator()
         //{
@@ -52,6 +48,9 @@ namespace Ricercar.Gravity
 
         public Texture2D GenerateTextureFromField(Vector2[] field, int fieldSize, int textureSize)
         {
+            if (m_material == null)
+                m_material = new Material(m_sharedMaterial);
+
             using (m_computeBuffer = new ComputeBuffer(field.Length, 8))
             {
                 m_computeBuffer.SetData(field);
@@ -59,6 +58,7 @@ namespace Ricercar.Gravity
                 m_material.SetBuffer(POINT_ARRAY_PROPERTY, m_computeBuffer);
                 m_material.SetInt(FIELD_SIZE_PROPERTY, fieldSize);
                 m_material.SetFloat(COLOUR_SCALE_PROPERTY, m_colourScale);
+
 
                 if (m_colourMode == ColourMode.Distortion)
                     m_material.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
@@ -77,7 +77,7 @@ namespace Ricercar.Gravity
 
                 Texture2D tex = new Texture2D(textureSize, textureSize)
                 {
-                    filterMode = FilterMode.Bilinear,
+                    filterMode = FilterMode.Trilinear,
                     wrapMode = TextureWrapMode.Clamp
                 };
 

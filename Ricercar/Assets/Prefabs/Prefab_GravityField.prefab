@@ -44,33 +44,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de21a67b397ce8c4fbf2a087921e6472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_gravityResolution: 2
-  m_textureResolution: 1
-  m_shader: {fileID: 4800000, guid: cda76b1f3cca5b34696fb59e5a399fa7, type: 3}
-  m_size: 63.64
-  m_displayData: 0
+  m_gravityResolution: 128
+  m_textureResolution: 128
+  m_size: 64
+  m_displayData: 1
   m_rawImage: {fileID: 299197871462583208}
-  m_sharedMaterial: {fileID: 2100000, guid: 8f83741a53132f84f9aac485dda503d8, type: 2}
-  m_displayMaterial: {fileID: 0}
-  m_transform: {fileID: 2275458955683163507}
-  m_gravityPoints:
-  - {x: 10.318867, y: 3.3513162}
-  - {x: 23.403164, y: 22.632269}
-  - {x: 10.184473, y: -3.4564712}
-  - {x: 23.403166, y: -23.650434}
-  m_positions:
-  - {x: -95.82, y: -31.82}
-  - {x: -32.18, y: -31.82}
-  - {x: -95.82, y: 31.82}
-  - {x: -32.18, y: 31.82}
-  m_bottomLeft: {x: -95.82, y: -31.82}
-  m_topRight: {x: -32.18, y: 31.82}
-  m_bottomRight: {x: -32.18, y: -31.82}
-  m_topLeft: {x: -95.82, y: 31.82}
   m_textureCreator:
+    m_sharedMaterial: {fileID: 2100000, guid: a6437b274cfc20845aee82cbbb8c76a7, type: 2}
     m_material: {fileID: 0}
     m_colourMode: 0
     m_colourScale: 0.1
+  m_data: {fileID: 0}
 --- !u!1 &5715117888470108532
 GameObject:
   m_ObjectHideFlags: 0
