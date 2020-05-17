@@ -18,8 +18,6 @@ namespace Ricercar.Gravity
         private Vector2[] m_gravityPoints;
         public Vector2[] GravityPoints => m_gravityPoints;
 
-        [SerializeField]
-        [HideInInspector]
         private Vector2[] m_positions;
         public Vector2[] Positions => m_positions;
 
@@ -78,6 +76,15 @@ namespace Ricercar.Gravity
 
         private Vector2 GetPosition(int x, int y)
         {
+            if (m_positions.IsNullOrEmpty())
+            {
+                float cellSize = CellSize;
+
+                Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
+
+                SetPosition(x, y, pos);
+            }
+
             return m_positions[y * m_gravityResolution + x];
         }
 
@@ -142,13 +149,13 @@ namespace Ricercar.Gravity
             {
                 for (int y = 0; y < m_gravityResolution; y++)
                 {
+                    Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
+
                     SetGravityPoint(x, y, zero);
+                    SetPosition(x, y, pos);
 
                     for (int i = 0; i < attractors.Length; i++)
                     {
-                        Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
-
-                        SetPosition(x, y, pos);
                         AddToGravityPoint(x, y, attractors[i].CalculateGravitationalForce(pos));
                     }
                 }
