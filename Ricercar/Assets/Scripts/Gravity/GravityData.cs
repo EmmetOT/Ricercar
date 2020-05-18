@@ -13,13 +13,13 @@ namespace Ricercar.Gravity
         [ShowAssetPreview(width: 2048, height: 2048)]
         private Texture2D m_texture;
 
-        [SerializeField]
-        [HideInInspector]
-        private Vector2[] m_gravityPoints;
-        public Vector2[] GravityPoints => m_gravityPoints;
+        //[SerializeField]
+        //[HideInInspector]
+        //private Vector2[] m_gravityPoints;
+        //public Vector2[] GravityPoints => m_gravityPoints;
 
-        private Vector2[] m_positions;
-        public Vector2[] Positions => m_positions;
+        //private Vector2[] m_positions;
+        //public Vector2[] Positions => m_positions;
 
         [SerializeField]
         [ReadOnly]
@@ -60,38 +60,39 @@ namespace Ricercar.Gravity
         [HideInInspector]
         private Vector2 m_topLeft;
 
-        private Vector2 GetGravityPoint(int x, int y)
-        {
-            return m_gravityPoints[y * m_gravityResolution + x];
-        }
-        private void SetGravityPoint(int x, int y, Vector2 gravityPoint)
-        {
-            m_gravityPoints[y * m_gravityResolution + x] = gravityPoint;
-        }
+        //private Vector2 GetGravityPoint(int x, int y)
+        //{
+        //    return m_gravityPoints[y * m_gravityResolution + x];
+        //}
+        //private void SetGravityPoint(int x, int y, Vector2 gravityPoint)
+        //{
+        //    m_gravityPoints[y * m_gravityResolution + x] = gravityPoint;
+        //}
 
-        private void AddToGravityPoint(int x, int y, Vector2 gravityPoint)
-        {
-            m_gravityPoints[y * m_gravityResolution + x] += gravityPoint;
-        }
+        //private void AddToGravityPoint(int x, int y, Vector2 gravityPoint)
+        //{
+        //    m_gravityPoints[y * m_gravityResolution + x] += gravityPoint;
+        //}
 
-        private Vector2 GetPosition(int x, int y)
-        {
-            if (m_positions.IsNullOrEmpty())
-            {
-                float cellSize = CellSize;
+        //private Vector2 GetPosition(int x, int y)
+        //{
+        //    //if (m_positions.IsNullOrEmpty())
+        //    //{
+        //    //    float cellSize = CellSize;
 
-                Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
+        //    //    Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
 
-                SetPosition(x, y, pos);
-            }
+        //    //    SetPosition(x, y, pos);
+        //    //}
 
-            return m_positions[y * m_gravityResolution + x];
-        }
+        //    //return m_positions[y * m_gravityResolution + x];
+        //    return Vector2.zero;
+        //}
 
-        private void SetPosition(int x, int y, Vector2 position)
-        {
-            m_positions[y * m_gravityResolution + x] = position;
-        }
+        //private void SetPosition(int x, int y, Vector2 position)
+        //{
+        //    //m_positions[y * m_gravityResolution + x] = position;
+        //}
 
         public Vector2 GetBottomLeft()
         {
@@ -115,15 +116,34 @@ namespace Ricercar.Gravity
 
         public float CellSize => m_size / (m_gravityResolution - 1);
 
-        public Texture2D CreateTexture(GravityFieldTextureCreator textureCreator, int resolution)
+//        public Texture2D CreateTexture(GravityFieldTextureCreator textureCreator, int resolution)
+//        {
+//            if (m_texture != null)
+//                DestroyImmediate(m_texture);
+
+//            m_textureResolution = resolution;
+//            m_texture = textureCreator.GenerateTextureFromField(m_gravityPoints, m_gravityResolution, m_textureResolution);
+
+//#if UNITY_EDITOR
+//            EditorUtility.SetDirty(this);
+//#endif
+
+//            return m_texture;
+//        }
+
+        //public void BlitInto(GravityFieldTextureCreator textureCreator, RenderTexture rt)
+        //{
+        //    textureCreator.BlitToRenderTexture(m_gravityPoints, m_gravityResolution, m_textureResolution, rt);
+        //}
+
+        public void BlitInto(ComputeBuffer buffer, GravityFieldTextureCreator textureCreator, RenderTexture rt)
         {
-            m_textureResolution = resolution;
-            m_texture = textureCreator.GenerateTextureFromField(m_gravityPoints, m_gravityResolution, m_textureResolution);
+            textureCreator.BlitToRenderTexture(buffer, m_gravityResolution, rt);
+        }
 
-#if UNITY_EDITOR
-            EditorUtility.SetDirty(this);
-#endif
-
+        public Texture2D GenerateTexture2D(ComputeBuffer buffer, GravityFieldTextureCreator textureCreator)
+        {
+            m_texture = textureCreator.GenerateTextureFromField(buffer, m_gravityResolution, m_textureResolution);
             return m_texture;
         }
 
@@ -133,8 +153,8 @@ namespace Ricercar.Gravity
             m_size = size;
             m_gravityResolution = gravityResolution;
 
-            m_gravityPoints = new Vector2[m_gravityResolution * m_gravityResolution];
-            m_positions = new Vector2[m_gravityResolution * m_gravityResolution];
+            //m_gravityPoints = new Vector2[m_gravityResolution * m_gravityResolution];
+            //m_positions = new Vector2[m_gravityResolution * m_gravityResolution];
 
             Vector2 zero = Vector2.zero;
 
@@ -143,79 +163,97 @@ namespace Ricercar.Gravity
             m_bottomRight = GetBottomRight();
             m_topLeft = GetTopLeft();
 
-            float cellSize = CellSize;
+            //float cellSize = CellSize;
 
-            for (int x = 0; x < m_gravityResolution; x++)
-            {
-                for (int y = 0; y < m_gravityResolution; y++)
-                {
-                    Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
+            //for (int x = 0; x < m_gravityResolution; x++)
+            //{
+            //    for (int y = 0; y < m_gravityResolution; y++)
+            //    {
+            //        Vector2 pos = new Vector2(m_bottomLeft.x + cellSize * x, m_bottomLeft.y + cellSize * y);
 
-                    SetGravityPoint(x, y, zero);
-                    SetPosition(x, y, pos);
+            //        SetGravityPoint(x, y, zero);
+            //        SetPosition(x, y, pos);
 
-                    for (int i = 0; i < attractors.Length; i++)
-                    {
-                        AddToGravityPoint(x, y, attractors[i].CalculateGravitationalForce(pos));
-                    }
-                }
-            }
+            //        for (int i = 0; i < attractors.Length; i++)
+            //        {
+            //            AddToGravityPoint(x, y, attractors[i].CalculateGravitationalForce(pos));
+            //        }
+            //    }
+            //}
 
 #if UNITY_EDITOR
             EditorUtility.SetDirty(this);
 #endif
         }
 
-        /// <summary>
-        /// Sample from the grid using bilinear interpolation.
-        /// </summary>
-        public Vector2 SampleGravityAt(Vector2 worldPos)
-        {
-            (int x0, int y0) = GetCell(worldPos);
+//        public void SetGravity(Vector2[] gravityPoints)
+//        {
+//            if (gravityPoints.Length != (m_gravityResolution * m_gravityResolution))
+//            {
+//                Debug.Log("Size of gravity points array must equal the square of the resolution, i.e.: " + (m_gravityResolution * m_gravityResolution));
+//                return;
+//            }
 
-            if (x0 >= m_gravityResolution - 1)
-                x0--;
+//            m_gravityPoints = gravityPoints;
 
-            if (y0 >= m_gravityResolution - 1)
-                y0--;
+//#if UNITY_EDITOR
+//            EditorUtility.SetDirty(this);
+//#endif
+//        }
 
-            if (x0 < 0 || y0 < 0)
-                return Vector2.zero;
+//        /// <summary>
+//        /// Sample from the grid using bilinear interpolation.
+//        /// </summary>
+//        public Vector2 SampleGravityAt(Vector2 worldPos)
+//        {
+//            (int x0, int y0) = GetCell(worldPos);
 
-            //x0 = Mathf.Clamp(x0, 0, m_resolution - 2);
-            //y0 = Mathf.Clamp(y0, 0, m_resolution - 2);
+//            if (x0 >= m_gravityResolution - 1)
+//                x0--;
 
-            int x1 = x0 + 1;
-            int y1 = y0 + 1;
+//            if (y0 >= m_gravityResolution - 1)
+//                y0--;
 
-            // first step is to get the normalized position in this 'quadrant' of the field
+//            if (x0 < 0 || y0 < 0)
+//                return Vector2.zero;
 
-            Vector2 bottomLeft = GetPosition(x0, y0);
-            Vector2 topRight = GetPosition(x1, y1);
+//            //x0 = Mathf.Clamp(x0, 0, m_resolution - 2);
+//            //y0 = Mathf.Clamp(y0, 0, m_resolution - 2);
 
-            float x_t = Mathf.InverseLerp(bottomLeft.x, topRight.x, worldPos.x);
-            float y_t = Mathf.InverseLerp(bottomLeft.y, topRight.y, worldPos.y);
+//            int x1 = x0 + 1;
+//            int y1 = y0 + 1;
 
-            // using these values we lerp first across the x axis, on the top and bottom of this quadrant
+//            // first step is to get the normalized position in this 'quadrant' of the field
 
-            Vector2 lerp_bottom = Vector2.Lerp(GetGravityPoint(x0, y0), GetGravityPoint(x1, y0), x_t);
-            Vector2 lerp_top = Vector2.Lerp(GetGravityPoint(x0, y1), GetGravityPoint(x1, y1), x_t);
+//            Vector2 bottomLeft = GetPosition(x0, y0);
+//            Vector2 topRight = GetPosition(x1, y1);
 
-            // finally we lerp between these two positions to get the interpolated position
+//            //Debug.Log("BottomLeft: " + bottomLeft);
+//            //Debug.Log("TopRight: " + topRight);
 
-            return Vector2.Lerp(lerp_bottom, lerp_top, y_t);
-        }
+//            float x_t = Mathf.InverseLerp(bottomLeft.x, topRight.x, worldPos.x);
+//            float y_t = Mathf.InverseLerp(bottomLeft.y, topRight.y, worldPos.y);
+
+//            // using these values we lerp first across the x axis, on the top and bottom of this quadrant
+
+//            Vector2 lerp_bottom = Vector2.Lerp(GetGravityPoint(x0, y0), GetGravityPoint(x1, y0), x_t);
+//            Vector2 lerp_top = Vector2.Lerp(GetGravityPoint(x0, y1), GetGravityPoint(x1, y1), x_t);
+
+//            // finally we lerp between these two positions to get the interpolated position
+
+//            return Vector2.Lerp(lerp_bottom, lerp_top, y_t) * 0.01f;
+//        }
 
         /// <summary>
         /// Given a world position, returns the grid coordinates. Always rounds down.
         /// </summary>
-        public (int, int) GetCell(Vector2 worldPos)
-        {
-            // determine which cell we're in
+        //public (int, int) GetCell(Vector2 worldPos)
+        //{
+        //    // determine which cell we're in
 
-            return (Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.x, m_topRight.x, worldPos.x) * (m_gravityResolution - 1f)),
-                Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.y, m_topRight.y, worldPos.y) * (m_gravityResolution - 1f)));
-        }
+        //    return (Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.x, m_topRight.x, worldPos.x) * (m_gravityResolution - 1f)),
+        //        Mathf.FloorToInt(Mathf.InverseLerp(m_bottomLeft.y, m_topRight.y, worldPos.y) * (m_gravityResolution - 1f)));
+        //}
 
         /// <summary>
         /// Returns true if the given position is inside this field segment.

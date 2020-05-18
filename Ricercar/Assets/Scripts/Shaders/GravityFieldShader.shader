@@ -89,13 +89,6 @@
 
 			fixed4 frag(v2f i) : SV_Target
 			{
-                // sample the texture
-                fixed4 texCol = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, texCol);
-
-				//return texCol;
-
 				int fieldSizeMinus1 = _FieldSize - 1;
 
 				int x0 = floor(i.uv.x * fieldSizeMinus1);
@@ -119,24 +112,16 @@
 				
 				float4 gravity = float4(lerp(lerp_bottom, lerp_top, y_t), 0, 1);
 
-				float2 distortedUVs = float2(-gravity.x * 0.006 + i.uv.x, -gravity.y * 0.006 + i.uv.y);
-
-				int xInt = floor(distortedUVs.x * 150);
-				int yInt = floor(distortedUVs.y * 150);
-
-				float4 finalCol = float4(0, 0, 0, 1);
-
-				finalCol = lerp(finalCol, float4(1, 1, 1, 1), xInt % 10 == 0);
-				finalCol = lerp(finalCol, float4(1, 1, 1, 1), yInt % 10 == 0);
-
-				return finalCol;
-
-
 			#ifdef IS_DISTORTION_MAP
-				gravity *= _ColourScale;
-				gravity.a = 1;
-				
-				return gravity;
+
+				float4 result = gravity * _ColourScale;
+				result.a = 1;
+				//return result;
+
+				float2 distortedUVs = float2((-gravity.x * _ColourScale) + i.uv.x * 6, -gravity.y * _ColourScale + i.uv.y * 6);
+				fixed4 texCol = tex2D(_MainTex, distortedUVs);
+				return texCol;
+
 			#else
 
 				float left;

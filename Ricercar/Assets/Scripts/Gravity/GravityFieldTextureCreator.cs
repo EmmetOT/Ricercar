@@ -16,10 +16,14 @@ namespace Ricercar.Gravity
         }
 
         [SerializeField]
+        private Texture m_texture;
+
+        [SerializeField]
         private Material m_sharedMaterial;
 
         [SerializeField]
         private Material m_material;
+        public Material Material => m_material;
 
         [SerializeField]
         private ColourMode m_colourMode;
@@ -35,60 +39,74 @@ namespace Ricercar.Gravity
         private const string COLOUR_SCALE_PROPERTY = "_ColourScale";
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
-        //~GravityFieldTextureCreator()
+        //public void BlitToRenderTexture(Vector2[] field, int fieldSize, int textureSize, RenderTexture renderTexture)
         //{
-        //    if (m_material != null)
+        //    using (m_computeBuffer = new ComputeBuffer(field.Length, 8))
         //    {
-        //        if (!Application.isPlaying)
-        //            Object.DestroyImmediate(m_material);
-        //        else
-        //            Object.Destroy(m_material);
+        //        m_computeBuffer.SetData(field);
+
+        //        BlitToRenderTexture(m_computeBuffer, fieldSize, textureSize, renderTexture);
         //    }
         //}
 
-        public Texture2D GenerateTextureFromField(Vector2[] field, int fieldSize, int textureSize)
+        public void BlitToRenderTexture(ComputeBuffer buffer, int fieldSize, RenderTexture renderTexture)
         {
             if (m_material == null)
                 m_material = new Material(m_sharedMaterial);
 
-            using (m_computeBuffer = new ComputeBuffer(field.Length, 8))
+            m_material.SetBuffer(POINT_ARRAY_PROPERTY, buffer);
+            m_material.SetInt(FIELD_SIZE_PROPERTY, fieldSize);
+            m_material.SetFloat(COLOUR_SCALE_PROPERTY, m_colourScale);
+
+            if (m_colourMode == ColourMode.Distortion)
+                m_material.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
+            else
+                m_material.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+
+            Graphics.Blit(m_texture, renderTexture, m_material);
+        }
+
+        public Texture2D GenerateTextureFromField(ComputeBuffer buffer, int fieldSize, int textureSize, RenderTexture texture)
+        {
+            BlitToRenderTexture(buffer, fieldSize, texture);
+
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = texture;
+
+            Texture2D tex = new Texture2D(textureSize, textureSize)
             {
-                m_computeBuffer.SetData(field);
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat
+            };
 
-                m_material.SetBuffer(POINT_ARRAY_PROPERTY, m_computeBuffer);
-                m_material.SetInt(FIELD_SIZE_PROPERTY, fieldSize);
-                m_material.SetFloat(COLOUR_SCALE_PROPERTY, m_colourScale);
+            tex.ReadPixels(new Rect(0, 0, textureSize, textureSize), 0, 0, false);
+            tex.Apply();
 
+            RenderTexture.active = active;
 
-                if (m_colourMode == ColourMode.Distortion)
-                    m_material.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
-                else
-                    m_material.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+            return tex;
+        }
+        public Texture2D GenerateTextureFromField(ComputeBuffer buffer, int fieldSize, int textureSize)
+        {
+            RenderTexture destination = RenderTexture.GetTemporary(textureSize, textureSize);
+            BlitToRenderTexture(buffer, fieldSize, destination);
 
-                RenderTexture source = RenderTexture.GetTemporary(textureSize, textureSize);
-                RenderTexture destination = RenderTexture.GetTemporary(textureSize, textureSize);
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = destination;
 
-                Graphics.Blit(source, destination, m_material);
+            Texture2D tex = new Texture2D(textureSize, textureSize)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat
+            };
 
-                RenderTexture.ReleaseTemporary(source);
+            tex.ReadPixels(new Rect(0, 0, textureSize, textureSize), 0, 0, false);
+            tex.Apply();
 
-                RenderTexture active = RenderTexture.active;
-                RenderTexture.active = destination;
+            RenderTexture.active = active;
+            RenderTexture.ReleaseTemporary(destination);
 
-                Texture2D tex = new Texture2D(textureSize, textureSize)
-                {
-                    filterMode = FilterMode.Trilinear,
-                    wrapMode = TextureWrapMode.Clamp
-                };
-
-                tex.ReadPixels(new Rect(0, 0, textureSize, textureSize), 0, 0, false);
-                tex.Apply();
-
-                RenderTexture.active = active;
-                RenderTexture.ReleaseTemporary(destination);
-
-                return tex;
-            }
+            return tex;
         }
     }
 }

@@ -8,9 +8,9 @@ namespace Ricercar.Gravity
     [RequireComponent(typeof(Rigidbody2D))]
     public abstract class Attractor : MonoBehaviour
     {
-        [SerializeField]
-        protected bool m_isStatic = false;
-        public bool IsStatic => m_isStatic;
+        //[SerializeField]
+        //protected bool m_isStatic = false;
+        //public bool IsStatic => m_isStatic;
 
         [SerializeField]
         private bool m_applyForceToSelf = true;
@@ -21,7 +21,6 @@ namespace Ricercar.Gravity
         public bool AffectsFields => m_affectsField;
 
         [SerializeField]
-        [HideIf("m_static")]
         private Vector2 m_startingForce;
 
         [SerializeField]
@@ -62,9 +61,17 @@ namespace Ricercar.Gravity
             GravityField.RemoveAttractor(this);
         }
 
+        public void AddForce(Vector2 force)
+        {
+            if (!m_applyForceToSelf)
+                return;
+
+            m_rigidbody.AddForce(force);
+        }
+
         private void Start()
         {
-            if (!m_startingForce.IsZero() && !m_isStatic)
+            if (!m_startingForce.IsZero()/* && !m_isStatic*/)
                 m_rigidbody.AddForce(m_startingForce);
 
             if (m_tracePath)
@@ -73,27 +80,27 @@ namespace Ricercar.Gravity
             }
         }
 
-        private void FixedUpdate()
-        {
-            if (m_tracePath)
-            {
-                m_pathTraceTimer -= Time.fixedDeltaTime;
+        //private void FixedUpdate()
+        //{
+        //    if (m_tracePath)
+        //    {
+        //        m_pathTraceTimer -= Time.fixedDeltaTime;
 
-                if (m_pathTraceTimer <= 0f)
-                {
-                    m_pathTraceTimer = m_pathTraceFrequency;
+        //        if (m_pathTraceTimer <= 0f)
+        //        {
+        //            m_pathTraceTimer = m_pathTraceFrequency;
 
-                    m_pathPoints.Add(m_rigidbody.position);
-                }
-            }
+        //            m_pathPoints.Add(m_rigidbody.position);
+        //        }
+        //    }
 
-            if (!m_applyForceToSelf)
-                return;
+        //    if (!m_applyForceToSelf)
+        //        return;
 
-            Vector2 gravityForce = GravityField.GetGravity(m_rigidbody.position, this) * Mass;
+        //    Vector2 gravityForce = GravityField.GetGravity(m_rigidbody.position, this);
 
-            m_rigidbody.AddForce(gravityForce);
-        }
+        //    m_rigidbody.AddForce(gravityForce * Mass);
+        //}
 
         /// <summary>
         /// Returns the gravity vector from the given point to this attractor. Also returns the point on the attractor which the

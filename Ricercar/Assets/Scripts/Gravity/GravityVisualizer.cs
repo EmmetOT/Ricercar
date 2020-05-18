@@ -50,48 +50,48 @@ namespace Ricercar.Gravity
                 m_colourGradient = Utils.CreateGradient(Color.white, Color.white, Color.blue, Color.red);
         }
 
-#if UNITY_EDITOR
-        private void OnDrawGizmos()
-        {
-            if (!m_showField)
-                return;
+//#if UNITY_EDITOR
+//        private void OnDrawGizmos()
+//        {
+//            if (!m_showField)
+//                return;
 
-            Vector2 bottomLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 0f, 10f));
-            Vector2 topLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 1f, 10f));
-            Vector2 bottomRight = m_camera.ViewportToWorldPoint(new Vector3(1f, 0f, 10f));
+//            Vector2 bottomLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 0f, 10f));
+//            Vector2 topLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 1f, 10f));
+//            Vector2 bottomRight = m_camera.ViewportToWorldPoint(new Vector3(1f, 0f, 10f));
 
-            Vector2 xComponent = Vector2.Lerp(bottomLeft, bottomRight, 1f / (m_fieldResolution - 1f)) - bottomLeft;
-            Vector2 yComponent = Vector2.Lerp(bottomLeft, topLeft, 1f / (m_fieldResolution - 1f)) - bottomLeft;
+//            Vector2 xComponent = Vector2.Lerp(bottomLeft, bottomRight, 1f / (m_fieldResolution - 1f)) - bottomLeft;
+//            Vector2 yComponent = Vector2.Lerp(bottomLeft, topLeft, 1f / (m_fieldResolution - 1f)) - bottomLeft;
 
-            for (int x = 0; x < m_fieldResolution; x++)
-            {
-                for (int y = 0; y < m_fieldResolution; y++)
-                {
-                    Vector2 pos = bottomLeft + xComponent * x + yComponent * y;
+//            for (int x = 0; x < m_fieldResolution; x++)
+//            {
+//                for (int y = 0; y < m_fieldResolution; y++)
+//                {
+//                    Vector2 pos = bottomLeft + xComponent * x + yComponent * y;
 
-                    Vector2 attraction;
+//                    Vector2 attraction;
 
-                    if (m_staticOnly)
-                        attraction = GravityField.GetStaticGravity(pos);
-                    else
-                        attraction = GravityField.GetGravity(pos);
+//                    if (m_staticOnly)
+//                        attraction = GravityField.GetStaticGravity(pos);
+//                    else
+//                        attraction = GravityField.GetGravity(pos);
 
-                    if (attraction.magnitude * m_vectorScale <= m_minVectorMagnitude)
-                        continue;
+//                    if (attraction.magnitude * m_vectorScale <= m_minVectorMagnitude)
+//                        continue;
 
-                    float attractionMagnitude = Mathf.Clamp(attraction.magnitude * m_vectorScale, m_minVectorMagnitude, m_maxVectorMagnitude);
+//                    float attractionMagnitude = Mathf.Clamp(attraction.magnitude * m_vectorScale, m_minVectorMagnitude, m_maxVectorMagnitude);
 
-                    float arrowScalar = Mathf.InverseLerp(m_minVectorMagnitude, m_maxVectorMagnitude, attractionMagnitude);
+//                    float arrowScalar = Mathf.InverseLerp(m_minVectorMagnitude, m_maxVectorMagnitude, attractionMagnitude);
 
-                    Vector3 attractionDirection = attraction.normalized;
+//                    Vector3 attractionDirection = attraction.normalized;
 
-                    Color col = m_colourGradient.Evaluate(Mathf.InverseLerp(0f, 2f, attractionMagnitude));
+//                    Color col = m_colourGradient.Evaluate(Mathf.InverseLerp(0f, 2f, attractionMagnitude));
 
-                    Utils.DrawArrow(pos, attractionDirection, col, attractionMagnitude * m_vectorScale, m_arrowScale * arrowScalar);
-                }
-            }
-        }
-#endif
+//                    Utils.DrawArrow(pos, attractionDirection, col, attractionMagnitude * m_vectorScale, m_arrowScale * arrowScalar);
+//                }
+//            }
+//        }
+//#endif
     }
 
 }
