@@ -1,17 +1,33 @@
 ﻿#pragma kernel ComputeFullField
-#pragma kernel ComputePointForces
+#pragma kernel ComputePointForcesParallel
+#pragma kernel ComputePointForcesSeries
 
 #define G 667.4
 #define THREAD_GROUP_SQRT 16
 #define THREAD_GROUP_SIZE 256
 
-StructuredBuffer<int> IgnorePoints;
+struct AttractorData
+{
+    float x;
+    float y;
+    int ignore;
+    float mass;
+};
 
-// 2d positions where z corresponds to mass of the point
-StructuredBuffer<float3> PointAttractors;
+struct AtomicVector2
+{
+    int X;
+    int Y;
+};
 
 // the resulting 2d array of gravity vectors
 RWStructuredBuffer<float2> GravityField;
+
+// 2d positions where z corresponds to mass of the point
+StructuredBuffer<AttractorData> PointAttractors;
+RWStructuredBuffer<float2> PointForces;
+
+RWStructuredBuffer<AtomicVector2> AtomicForcesOutputBuffer;
 
 int PointCount;
 
@@ -56,13 +72,13 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (THREAD_GROUP_SIZE - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (THREAD_GROUP_SIZE - 1.0)));
 
     float2 result = float2(0, 0);
-
+    
     for (int i = 0; i < PointCount; i++)
     {
-        int doNotCount = IgnorePoints[i];
+        int doNotCount = PointAttractors[i].ignore;
 
         float2 pointPosition = float2(PointAttractors[i].x + doNotCount, PointAttractors[i].y + doNotCount);
-        float mass = PointAttractors[i].z;
+        float mass = PointAttractors[i].mass;
 
         float2 difference = pointPosition - position;
 
@@ -79,18 +95,54 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     GravityField[id.x + THREAD_GROUP_SIZE * id.y] = result;
 }
 
-RWStructuredBuffer<float2> PointForces;
+[numthreads(1, 1, 1)]
+void ComputePointForcesParallel(uint3 id : SV_DispatchThreadID)
+{    
+    // this kernel computes the attraction from this point to every other point
+    
+    //int doNotCount = or(currentPoint.ignore, when_eq(i, id.x));
+    int doNotCount = when_eq(id.x, id.y);
+
+    AttractorData pointOne = PointAttractors[id.x];
+    AttractorData pointTwo = PointAttractors[id.y];
+    
+    float2 positionOne = float2(pointOne.x, pointOne.y);
+    float2 positionTwo = float2(pointTwo.x + doNotCount, pointTwo.y + doNotCount);
+
+    float massOne = pointOne.mass;
+    float massTwo = pointTwo.mass;
+
+    float2 difference = positionTwo - positionOne;
+
+    float sqrMagnitude = difference.x * difference.x + difference.y * difference.y;
+    float magnitude = sqrt(sqrMagnitude);
+
+    float2 direction = difference / magnitude;
+
+    float forceMagnitude = (1000 * G * massOne * massTwo) / sqrMagnitude;
+
+    float2 forceVec = (1 - doNotCount) * (direction * forceMagnitude);
+
+    int resultX = (int)forceVec.x;
+    int resultY = (int)forceVec.y;
+    
+    InterlockedAdd(AtomicForcesOutputBuffer[id.x].X, resultX);
+    InterlockedAdd(AtomicForcesOutputBuffer[id.x].Y, resultY);
+
+    InterlockedAdd(AtomicForcesOutputBuffer[id.y].X, -resultX);
+    InterlockedAdd(AtomicForcesOutputBuffer[id.y].Y, -resultY);
+}
 
 [numthreads(1, 1, 1)]
-void ComputePointForces(uint3 id : SV_DispatchThreadID)
-{    
+void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
+{
     float2 result = float2(0, 0);
 
     // this kernel computes the attraction from this point to every other point
 
-    float3 currentPoint = PointAttractors[id.x];
+    AttractorData currentPoint = PointAttractors[id.x];
     float2 position = float2(currentPoint.x, currentPoint.y);
-    float mass = currentPoint.z;
+    float mass = currentPoint.mass;
 
     for (int i = 0; i < PointCount; i++)
     {
@@ -98,13 +150,13 @@ void ComputePointForces(uint3 id : SV_DispatchThreadID)
         // for the attractor to itself. this value returns 1 if the indices are equal,
         // else 0
         // we also use this to disable gravitation towards certain objects
-        int doNotCount = or(IgnorePoints[i], when_eq(i, id.x));
+        int doNotCount = or(currentPoint.ignore, when_eq(i, id.x));
 
-        float3 otherPoint = PointAttractors[i];
+        AttractorData otherPoint = PointAttractors[i];
         // adding the value here to prevent a division by 0. it doesn't matter, this calculation
         // will be discarded anyway
         float2 otherPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
-        float otherMass = otherPoint.z;
+        float otherMass = otherPoint.mass;
 
         float2 difference = otherPosition - position;
 
@@ -116,7 +168,7 @@ void ComputePointForces(uint3 id : SV_DispatchThreadID)
         float forceMagnitude = (G * mass * otherMass) / sqrMagnitude;
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
-	}
+    }
 
     PointForces[id.x] = result;
 }

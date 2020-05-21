@@ -71,8 +71,8 @@ namespace Ricercar
 
         private void FireStabilisers()
         {
-            Vector2 antiGravForce = GravityField.GetGravity(m_attractor);
-            Vector2 dampingForce = m_attractor.Rigidbody.velocity * m_stabilisationDamping;
+            Vector2 antiGravForce = m_attractor.CurrentGravity;
+            Vector2 dampingForce = m_attractor.Velocity * m_stabilisationDamping;
             Vector2 resultForce = antiGravForce + dampingForce;
 
             float angle = -Vector2.SignedAngle(Vector2.up, resultForce.normalized);

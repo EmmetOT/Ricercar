@@ -101,7 +101,7 @@
 
 				float x_t = invLerp(x0, x1, i.uv.x * fieldSizeMinus1);
 				float y_t = invLerp(y0, y1, i.uv.y * fieldSizeMinus1);
-				
+
 				float2 gravityBottomLeft = _Points[y0 * _FieldSize + x0];
 				float2 gravityBottomRight = _Points[y0 * _FieldSize + x1];
 				float2 gravityTopLeft = _Points[y1 * _FieldSize + x0];
@@ -114,13 +114,12 @@
 
 			#ifdef IS_DISTORTION_MAP
 
-				float4 result = gravity * _ColourScale;
-				result.a = 1;
-				//return result;
-
 				float2 distortedUVs = float2((-gravity.x * _ColourScale) + i.uv.x * 6, -gravity.y * _ColourScale + i.uv.y * 6);
-				fixed4 texCol = tex2D(_MainTex, distortedUVs);
-				return texCol;
+				fixed4 texCol = tex2D(_MainTex, i.uv - gravity);
+
+				float colourMagLerp = length(gravity) * 0.05;
+
+				return tex2D(_MainTex, distortedUVs) * lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), colourMagLerp);
 
 			#else
 

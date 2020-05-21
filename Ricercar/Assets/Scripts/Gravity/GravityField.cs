@@ -1,335 +1,237 @@
-﻿using NaughtyAttributes;
-using System.Collections;
+﻿using Boo.Lang.Runtime.DynamicDispatching;
+using NaughtyAttributes;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
-using System.Runtime.CompilerServices;
-
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace Ricercar.Gravity
 {
-    /// <summary>
-    /// A gravity grid stores a discrete grid of gravity samples. We use bilinear sampling
-    /// to make the grid continuous. Grids can be tiled to make a continuous gravity field.
-    /// </summary>
     public class GravityField : MonoBehaviour
     {
-        private const int THREAD_GROUP_SQRT = 16;
+        [System.Serializable]
+        private struct AtomicVector2
+        {
+            public const int Factor = 1000;
+            public const int Stride = 8;
 
-        private static readonly List<GravityField> m_allFields = new List<GravityField>();
+            [SerializeField]
+            private int m_x;
+            public int X => m_x;
 
-        private static readonly List<Attractor> m_allAttractors = new List<Attractor>();
+            [SerializeField]
+            private int m_y;
+            public int Y => m_y;
 
-        //private static readonly List<Attractor> m_staticAttractors = new List<Attractor>();
+            public AtomicVector2(int x, int y)
+            {
+                m_x = x;
+                m_y = y;
+            }
+
+            public AtomicVector2(Vector2 vec) : this((int)(vec.x * Factor), (int)(vec.y * Factor)) { }
+
+            public static implicit operator Vector2(AtomicVector2 atomicVector2)
+            {
+                return new Vector2((float)atomicVector2.m_x / Factor, (float)atomicVector2.m_y / Factor);
+            }
+
+            public static implicit operator AtomicVector2(Vector2 vector2)
+            {
+                return new AtomicVector2(vector2);
+            }
+
+            public override string ToString()
+            {
+                return $"({m_x}, {m_y})";
+            }
+        }
 
         public const float G = 667.4f;
+
+        private const float MIN_MOVEMENT_SQR_MAGNITUDE = 0.1f;
+
+        private List<IAttractor> m_attractors = new List<IAttractor>();
+        private readonly List<GravityVisualizer> m_visualizers = new List<GravityVisualizer>();
 
         [SerializeField]
         private ComputeShader m_gravityFieldComputeShader;
 
         [SerializeField]
-        [MinValue(1)]
-        [UnityEngine.Serialization.FormerlySerializedAs("m_resolution")]
-        private int m_gravityResolution = 2048;
+        [OnValueChanged("OnParallelModeChanged")]
+        [Tooltip("Decide whether each pairwise point attraction is calculated in a different thread, or in a single series for loop. May produce different results.")]
+        private bool m_parallelMode = false;
 
-        [SerializeField]
-        [MinValue(1)]
-        private int m_textureResolution = 128;
+        private int m_computePointForcesKernel = -1;
 
-        [SerializeField]
-        [MinValue(0f)]
-        private float m_size = 1f;
+        private Vector2[] m_attractorOutputData;
+        private ComputeBuffer m_pointForcesOutputBuffer;
 
-        [SerializeField]
-        [OnValueChanged("OnDisplayDataChanged")]
-        private bool m_displayData = true;
+        private readonly List<AttractorData> m_attractorInputData = new List<AttractorData>();
+        private ComputeBuffer m_pointInputBuffer;
 
-        [SerializeField]
-        private RawImage m_rawImage;
+        private ComputeBuffer m_parallelOutputBuffer;
+        private AtomicVector2[] m_parallelOutputData;
 
-        [SerializeField]
-        private Image m_image;
-
-        [SerializeField]
-        private GravityFieldTextureCreator m_textureCreator;
-
-        [SerializeField]
-        private GravityData m_data;
-
-        private RenderTexture m_renderTexture;
-
-        #region Unity Callbacks
+        private int m_attractorCount = 0;
 
         private void Start()
         {
-            m_renderTexture = new RenderTexture(m_textureResolution, m_textureResolution, 0);
-            m_rawImage.texture = m_renderTexture;
-        }
-
-        private void OnEnable()
-        {
-            m_fieldOutputBuffer = new ComputeBuffer(THREAD_GROUP_SQRT * THREAD_GROUP_SQRT * THREAD_GROUP_SQRT * THREAD_GROUP_SQRT, 8);
-
-            m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputePointForces");
-
-            m_forcesOutputBuffer = new ComputeBuffer(2, 8);
-
-            m_allFields.Add(this);
-
-            FindAllAttractors();
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            RefreshComputeBuffers();
         }
 
         private void OnDisable()
         {
-            if (m_pointInputBuffer != null)
-                m_pointInputBuffer.Dispose();
-
-            if (m_forcesOutputBuffer != null)
-                m_forcesOutputBuffer.Dispose();
-
-            if (m_ignorePointsInputBuffer != null)
-                m_ignorePointsInputBuffer.Dispose();
-
-            m_fieldOutputBuffer.Dispose();
-
-            m_allFields.Remove(this);
+            ReleaseBuffers();
         }
 
-        //Vector2[] resultingGravityField = new Vector2[16 * 16 * 16 * 16];
-
-        private readonly List<Vector3> m_staticPoints = new List<Vector3>();
-
-        ComputeBuffer m_pointInputBuffer;
-        ComputeBuffer m_ignorePointsInputBuffer;
-        ComputeBuffer m_fieldOutputBuffer;
-        ComputeBuffer m_forcesOutputBuffer;
-        int m_computeFullFieldKernel;
-        int m_computePointForcesKernel;
-
-        private Vector2[] m_pointForces = new Vector2[2];
-        private int[] m_ignorePoints = new int[2];
-
-        private void Update()
+        public void ReleaseBuffers()
         {
-            CalculateFieldFromComputeShader(m_allAttractors);
-            m_data.BlitInto(m_fieldOutputBuffer, m_textureCreator, m_renderTexture);
+            m_pointForcesOutputBuffer?.Release();
+            m_pointInputBuffer?.Release();
+            m_parallelOutputBuffer?.Release();
+        }
 
+        public void RegisterAttractor(IAttractor attractor)
+        {
+            if (m_attractors.Contains(attractor))
+                return;
+
+            m_attractors.Add(attractor);
+
+            RefreshComputeBuffers();
+        }
+
+        public void DeregisterAttractor(IAttractor attractor)
+        {
+            if (m_attractors.Remove(attractor))
+                RefreshComputeBuffers();
+        }
+
+        public void RegisterVisualizer(GravityVisualizer visualizer)
+        {
+            if (m_visualizers.Contains(visualizer))
+                return;
+
+            Debug.Log("Registering " + visualizer.name, visualizer);
+
+            m_visualizers.Add(visualizer);
+
+            visualizer.SetInputData(m_pointInputBuffer);
+        }
+
+        public void DeregisterVisualizer(GravityVisualizer visualizer)
+        {
+            if (m_visualizers.Remove(visualizer))
+                RefreshComputeBuffers();
+        }
+
+        /// <summary>
+        /// Not recommended for normal use. Forces this class to generate a buffer full of point attractor data. This could be used to generate 
+        /// static textures outside of runtime.
+        /// </summary>
+        public ComputeBuffer ForceGeneratePointInputBuffer()
+        {
+            m_attractors = new List<IAttractor>(FindObjectsOfType<PointAttractor>());
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            RefreshComputeBuffers();
+            ComputePointForces();
+            return m_pointInputBuffer;
+        }
+
+        private void RefreshComputeBuffers()
+        {
+            // prevent this class from doing anything until after start
+            if (m_computePointForcesKernel < 0)
+                return;
+
+            m_attractorCount = m_attractors.Count;
+
+            ReleaseBuffers();
+
+            if (m_attractorCount == 0)
+                return;
+
+            m_pointForcesOutputBuffer = new ComputeBuffer(m_attractorCount, sizeof(float) * 2);
+            m_pointInputBuffer = new ComputeBuffer(m_attractorCount, AttractorData.Stride);
+
+            if (m_parallelMode)
+            {
+                m_parallelOutputBuffer = new ComputeBuffer(m_attractorCount, AtomicVector2.Stride);
+                m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "AtomicForcesOutputBuffer", m_parallelOutputBuffer);
+            }
+
+            m_attractorOutputData = new Vector2[m_attractorCount];
+            m_parallelOutputData = new AtomicVector2[m_attractorCount];
+
+            // send the data to the kernel of the compute shader meant for the gravity force between point attractors
+            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointAttractors", m_pointInputBuffer);
+            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_pointForcesOutputBuffer);
+            m_gravityFieldComputeShader.SetInt("PointCount", m_attractorCount);
+
+            for (int i = 0; i < m_visualizers.Count; i++)
+            {
+                if (m_visualizers[i] != null)
+                    m_visualizers[i].SetInputData(m_pointInputBuffer);
+            }
+        }
+
+        private void ComputePointForces()
+        {
+            if (m_attractors.IsNullOrEmpty())
+                return;
+
+            m_attractorInputData.Clear();
+
+            for (int i = 0; i < m_attractorCount; i++)
+                m_attractorInputData.Add(new AttractorData(m_attractors[i]));
+
+            m_pointInputBuffer.SetData(m_attractorInputData);
+
+            if (m_parallelMode)
+            {
+                m_parallelOutputBuffer.SetData(m_parallelOutputData);
+                m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, m_attractorCount, 1);
+                m_parallelOutputBuffer.GetData(m_parallelOutputData);
+
+                for (int i = 0; i < m_parallelOutputData.Length; i++)
+                {
+                    m_attractorOutputData[i] = m_parallelOutputData[i];
+                    m_parallelOutputData[i] = new AtomicVector2(0, 0);
+                }
+            }
+            else
+            {
+                m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, 1, 1);
+                m_pointForcesOutputBuffer.GetData(m_attractorOutputData);
+            }
+        }
+
+        private void ApplyPointForces()
+        {
+            for (int i = 0; i < m_attractorCount; i++)
+            {
+                if (!m_attractorOutputData[i].IsNaN()
+                    && m_attractorOutputData[i].sqrMagnitude > MIN_MOVEMENT_SQR_MAGNITUDE)
+                {
+                    m_attractors[i].SetGravity(m_attractorOutputData[i]);
+                }
+            }
         }
 
         private void FixedUpdate()
         {
-            if (m_pointForces == null)
-            {
-                Debug.Log("Point forces is null!");
-                return;
-            }
-
-            if (m_pointInputBuffer == null)
+            if (m_computePointForcesKernel < 0)
                 return;
 
-            // send the data to the kernel of the compute shader meant for the gravity force between point attractors
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointAttractors", m_pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "IgnorePoints", m_ignorePointsInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
-
-            m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_allAttractors.Count, 1, 1);
-            m_forcesOutputBuffer.GetData(m_pointForces);
-
-            for (int i = 0; i < m_pointForces.Length; i++)
-            {
-                m_allAttractors[i].AddForce(m_pointForces[i]);
-            }
+            ComputePointForces();
+            ApplyPointForces();
         }
 
-        #endregion
-
-        private void FillAttractorBuffers(IList<Attractor> attractors)
+        private void OnParallelModeChanged()
         {
-            if (m_pointInputBuffer == null || attractors.Count != m_staticPoints.Count)
-            {
-                if (m_pointInputBuffer != null)
-                    m_pointInputBuffer.Dispose();
-
-                m_pointInputBuffer = new ComputeBuffer(attractors.Count, 12);
-            }
-
-            if (m_forcesOutputBuffer == null || m_ignorePointsInputBuffer == null || attractors.Count != m_staticPoints.Count)
-            {
-                if (m_forcesOutputBuffer != null)
-                    m_forcesOutputBuffer.Dispose(); 
-                
-                if (m_ignorePointsInputBuffer != null)
-                    m_ignorePointsInputBuffer.Dispose();
-
-                m_pointForces = new Vector2[attractors.Count];
-                m_ignorePoints = new int[attractors.Count];
-
-                m_forcesOutputBuffer = new ComputeBuffer(attractors.Count, 8);
-                m_ignorePointsInputBuffer = new ComputeBuffer(attractors.Count, 4);
-
-                for (int i = 0; i < m_ignorePoints.Length; i++)
-                {
-                    m_ignorePoints[i] = attractors[i].AffectsFields ? 0 : 1;
-                }
-            }
-
-            m_staticPoints.Clear();
-
-            for (int i = 0; i < attractors.Count; i++)
-            {
-                PointAttractor attractor = attractors[i] as PointAttractor;
-
-                if (attractor == null)
-                    continue;
-
-                m_staticPoints.Add(new Vector3(attractor.Position.x, attractor.Position.y, attractor.Mass));
-            }
-
-            m_pointInputBuffer.SetData(m_staticPoints);
-            m_ignorePointsInputBuffer.SetData(m_ignorePoints);
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            RefreshComputeBuffers();
         }
-
-        public void CalculateFieldFromComputeShader(IList<Attractor> attractors)
-        {
-            FillAttractorBuffers(attractors);
-
-            // send the data to the kernel of the compute shader meant for calculating the gravity field of points
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", m_pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "GravityField", m_fieldOutputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "IgnorePoints", m_ignorePointsInputBuffer);
-
-            m_gravityFieldComputeShader.SetInt("PointCount", m_staticPoints.Count);
-            m_gravityFieldComputeShader.SetVector("BottomLeft", m_data.GetBottomLeft());
-            m_gravityFieldComputeShader.SetVector("TopRight", m_data.GetTopRight());
-
-            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1);
-        }
-
-        [Button]
-        public void UpdateTexture()
-        {
-            m_fieldOutputBuffer = new ComputeBuffer(THREAD_GROUP_SQRT * THREAD_GROUP_SQRT * THREAD_GROUP_SQRT * THREAD_GROUP_SQRT, 8);
-
-            CalculateFieldFromComputeShader(FindObjectsOfType<PointAttractor>());
-
-            m_rawImage.texture = m_data.GenerateTexture2D(m_fieldOutputBuffer, m_textureCreator);
-
-            m_pointInputBuffer.Dispose();
-            m_ignorePointsInputBuffer.Dispose();
-            m_fieldOutputBuffer.Dispose();
-
-#if UNITY_EDITOR
-            EditorUtility.SetDirty(m_rawImage);
-#endif
-        }
-
-        [Button]
-        public void UpdateAll()
-        {
-            GravityField[] fields = FindObjectsOfType<GravityField>();
-
-            for (int i = 0; i < fields.Length; i++)
-            {
-                fields[i].UpdateTexture();
-            }
-        }
-
-        [Button]
-        public void FindAllAttractors()
-        {
-            Attractor[] attractors = FindObjectsOfType<Attractor>();
-
-            m_allAttractors.Clear();
-            //m_staticAttractors.Clear();
-
-            for (int i = 0; i < attractors.Length; i++)
-            {
-                AddAttractor(attractors[i]);
-            }
-        }
-
-        [Button]
-        public void ToggleDisplays()
-        {
-            bool display = !m_displayData;
-
-            GravityField[] fields = FindObjectsOfType<GravityField>();
-
-            for (int i = 0; i < fields.Length; i++)
-            {
-                fields[i].SetDisplayData(display);
-            }
-        }
-
-        public void BakeGravity()
-        {
-            if (m_data == null)
-                m_data = GravityData.Create(this);
-
-            m_data.Bake(transform.position, m_size, m_gravityResolution, m_allAttractors.ToArray());
-        }
-
-        #region Static Methods
-
-        /// <summary>
-        /// Add an attractor to the gravity field system.
-        /// </summary>
-        public static void AddAttractor(Attractor attractor)
-        {
-            if (!m_allAttractors.Contains(attractor))
-                m_allAttractors.Add(attractor);
-        }
-
-        /// <summary>
-        /// Remove an attractor from the gravity field system. This won't do much
-        /// if you remove a static attractor.
-        /// </summary>
-        public static void RemoveAttractor(Attractor attractor)
-        {
-            m_allAttractors.Remove(attractor);
-        }
-
-        /// <summary>
-        /// Gets the total gravity at the given position. Optionally can ignore given attractors.
-        /// </summary>
-        public static Vector2 GetGravity(Vector2 position, params Attractor[] ignore)
-        {
-            Vector2 gravityForce = Vector3.zero;
-
-            ///gravityForce += GetStaticGravity(position);
-            //gravityForce += GetDynamicGravity(position, ignore);
-
-            return gravityForce;
-        }
-
-        /// <summary>
-        /// Get the gravity for the given attractor, both static and dynamic.
-        /// </summary>
-        public static Vector2 GetGravity(Attractor attractor)
-        {
-            return GetGravity(attractor.Position, attractor);
-        }
-
-        #endregion
-
-        #region Editor Stuff
-
-        public void SetDisplayData(bool isDisplaying)
-        {
-            m_displayData = isDisplaying;
-
-            OnDisplayDataChanged();
-        }
-
-        private void OnDisplayDataChanged()
-        {
-            m_rawImage.gameObject.SetActive(m_displayData);
-        }
-
-        #endregion
     }
 }

@@ -37,23 +37,23 @@ namespace Ricercar
             m_transform = transform;
         }
 
-        private void LateUpdate()
-        {
-            if (m_followTransform == null)
-                return;
+        //private void LateUpdate()
+        //{
+        //    if (m_followTransform == null)
+        //        return;
 
-            m_transform.position = Vector3.Lerp(m_transform.position, m_followTransform.position, m_followSpeed * Time.deltaTime);
+        //    m_transform.position = Vector3.Lerp(m_transform.position, m_followTransform.position, m_followSpeed * Time.deltaTime);
 
-            if (m_rotateWithGravity)
-            {
-                Vector2 gravity = GravityField.GetGravity(m_transform.position);
+        //    if (m_rotateWithGravity)
+        //    {
+        //        Vector2 gravity = GravityField.GetGravity(m_transform.position);
 
-                if (gravity.IsZero())
-                    gravity = Vector2.down;
+        //        if (gravity.IsZero())
+        //            gravity = Vector2.down;
 
-                m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -gravity.normalized), m_rotationSpeed * Time.deltaTime);
-            }
-        }
+        //        m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -gravity.normalized), m_rotationSpeed * Time.deltaTime);
+        //    }
+        //}
     }
 
 }

@@ -93,7 +93,10 @@ namespace Ricercar
                 Wheel wheel = m_wheelPool.GetNew(m_wheels[i].Type);
                 wheel.transform.SetParent(m_transform);
                 wheel.transform.localPosition = Vector3.zero;
-                wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour, m_unselectedColour, i, m_solver, m_material, m_attractor, m_collider);
+
+                wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour,
+                    m_unselectedColour, i, m_solver, m_material, m_attractor, m_collider);
+
                 wheel.SetSelected(i == m_currentWheelIndex);
 
                 m_currentWheels.Add(wheel);
@@ -126,13 +129,13 @@ namespace Ricercar
                 if (m_wheels[i].Control == Wheel.Control.MOUSE)
                     wheel.OnScroll(Input.mouseScrollDelta.y * m_ropeScrollSpeed * Time.deltaTime);
             }
-            
+
             if (Input.GetMouseButtonUp(0))
                 m_primaryFire = true;
 
             if (Input.GetMouseButtonUp(1))
                 m_secondaryFire = true;
-            
+
             if (Input.GetKeyUp(KeyCode.Q))
                 DecrementCurrentWheel();
             else if (Input.GetKeyUp(KeyCode.E))
@@ -169,7 +172,7 @@ namespace Ricercar
 
                     if (m_secondaryFire)
                         wheel.SecondaryFire();
-                    
+
                     if (Input.GetMouseButton(1))
                         wheel.HoldSecondaryFire();
                     else if (wheel.IsSecondaryFireHeld)
@@ -180,7 +183,6 @@ namespace Ricercar
                     else if (wheel.IsPrimaryFireHeld)
                         wheel.ReleaseHoldPrimaryFire();
                 }
-
             }
 
             m_primaryFire = false;
@@ -201,7 +203,8 @@ namespace Ricercar
             do
             {
                 m_currentWheelIndex = m_currentWheelIndex.Increment(m_currentWheels);
-            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1 && m_currentWheelIndex != startingPoint);
+            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1
+                                                                && m_currentWheelIndex != startingPoint);
 
             m_currentWheels[m_currentWheelIndex].SetSelected(true);
         }
@@ -215,7 +218,8 @@ namespace Ricercar
             do
             {
                 m_currentWheelIndex = m_currentWheelIndex.Decrement(m_currentWheels);
-            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1 && m_currentWheelIndex != startingPoint);
+            } while (m_wheels[m_currentWheelIndex].AlwaysActive && m_currentWheels.Count > 1
+                                                                && m_currentWheelIndex != startingPoint);
 
             m_currentWheels[m_currentWheelIndex].SetSelected(true);
         }
@@ -224,26 +228,27 @@ namespace Ricercar
         {
             Vector2 mousePos = Utils.GetMousePos2D(m_camera);
 
-            return (mousePos - (Vector2)m_transform.position.SetZ(0f)).normalized;
+            return (mousePos - (Vector2) m_transform.position.SetZ(0f)).normalized;
         }
 
         private Vector2 GetCurrentKeyboardAim()
         {
-            Vector2 sum = Vector2.zero;
+            //Vector2 sum = Vector2.zero;
 
-            Vector2 currentDown = GravityField.GetGravity(m_attractor).normalized;
+            //Vector2 currentDown = GravityField.GetGravity(m_attractor).normalized;
 
-            if (currentDown.IsZero())
-                currentDown = Vector2.down;
+            //if (currentDown.IsZero())
+            //    currentDown = Vector2.down;
 
-            Vector2 currentRight = Vector3.Cross(currentDown, Vector3.back);
+            //Vector2 currentRight = Vector3.Cross(currentDown, Vector3.back);
 
-            sum += Input.GetKey(KeyCode.W) ? -currentDown : Vector2.zero;
-            sum += Input.GetKey(KeyCode.S) ? currentDown : Vector2.zero;
-            sum += Input.GetKey(KeyCode.A) ? -currentRight : Vector2.zero;
-            sum += Input.GetKey(KeyCode.D) ? currentRight : Vector2.zero;
+            //sum += Input.GetKey(KeyCode.W) ? -currentDown : Vector2.zero;
+            //sum += Input.GetKey(KeyCode.S) ? currentDown : Vector2.zero;
+            //sum += Input.GetKey(KeyCode.A) ? -currentRight : Vector2.zero;
+            //sum += Input.GetKey(KeyCode.D) ? currentRight : Vector2.zero;
 
-            return sum.normalized;
+            //return sum.normalized;
+            return Vector2.one;
         }
 
         [Button("Reduce Velocity")]
@@ -254,5 +259,3 @@ namespace Ricercar
         }
     }
 }
-
-

@@ -10,12 +10,12 @@ namespace Ricercar.Gravity
         [SerializeField]
         private GameObject m_arrow;
 
-        private void Update()
-        {
-            Vector2 gravity = GravityField.GetGravity(transform.position);
+        //private void Update()
+        //{
+        //    Vector2 gravity = GravityField.GetGravity(transform.position);
 
-            m_arrow.transform.localRotation = Quaternion.LookRotation(Vector3.forward, gravity.normalized);
-            m_arrow.transform.localScale = Mathf.Min(gravity.magnitude * 0.05f, 8f) * Vector3.one;
-        }
+        //    m_arrow.transform.localRotation = Quaternion.LookRotation(Vector3.forward, gravity.normalized);
+        //    m_arrow.transform.localScale = Mathf.Min(gravity.magnitude * 0.05f, 8f) * Vector3.one;
+        //}
     }
 }

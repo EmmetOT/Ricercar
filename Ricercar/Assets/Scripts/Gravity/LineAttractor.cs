@@ -25,30 +25,30 @@ namespace Ricercar.Gravity
         [MinValue(0f)]
         private float m_deadZoneSteepness = 1000f;
 
-#if UNITY_EDITOR
-        protected override void OnDrawGizmos()
-        {
-            base.OnDrawGizmos();
+//#if UNITY_EDITOR
+//        protected override void OnDrawGizmos()
+//        {
+//            base.OnDrawGizmos();
 
-            if (m_startPoint == null || m_endPoint == null)
-                return;
+//            if (m_startPoint == null || m_endPoint == null)
+//                return;
 
-            Gizmos.color = Color.white;
-            Gizmos.DrawLine(m_startPoint.position, m_endPoint.position);
-        }
-#endif
+//            Gizmos.color = Color.white;
+//            Gizmos.DrawLine(m_startPoint.position, m_endPoint.position);
+//        }
+//#endif
 
-        protected override Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos)
-        {
-            sourcePos = Utils.ProjectPointOnLineSegment(m_startPoint.position, m_endPoint.position, from);
-            Vector2 result = sourcePos - from;
+//        protected override Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos)
+//        {
+//            sourcePos = Utils.ProjectPointOnLineSegment(m_startPoint.position, m_endPoint.position, from);
+//            Vector2 result = sourcePos - from;
 
-            float deadzoneDist = result.magnitude - m_deadZoneMagnitude;
+//            float deadzoneDist = result.magnitude - m_deadZoneMagnitude;
 
-            if (deadzoneDist <= 0f)
-                return Vector2.Lerp(result, result.normalized * m_deadZoneSteepness, Mathf.InverseLerp(0f, -m_deadZoneMagnitude, deadzoneDist));
+//            if (deadzoneDist <= 0f)
+//                return Vector2.Lerp(result, result.normalized * m_deadZoneSteepness, Mathf.InverseLerp(0f, -m_deadZoneMagnitude, deadzoneDist));
 
-            return result;
-        }
+//            return result;
+//        }
     }
 }

@@ -113,6 +113,28 @@ namespace Ricercar
             return vec == Vector2.zero;
         }
 
+        /// <summary>
+        /// Returns whether this vector contains NaNs.
+        /// </summary>
+        public static bool IsNaN(this Vector2 vec)
+        {
+            return float.IsNaN(vec.x) || float.IsNaN(vec.y);
+        }
+
+        /// <summary>
+        /// Returns whether this vector contains NaNs.
+        /// </summary>
+        public static bool IsNaN(this Vector3 vec)
+        { return float.IsNaN(vec.x) || float.IsNaN(vec.y) || float.IsNaN(vec.z);
+        }
+
+        /// <summary>
+        /// Returns whether this vector contains NaNs.
+        /// </summary>
+        public static bool IsNaN(this Vector4 vec)
+        {
+            return float.IsNaN(vec.x) || float.IsNaN(vec.y) || float.IsNaN(vec.z) || float.IsNaN(vec.w);
+        }
 
         /// <summary>
         /// Set the x ordinate of this vector.

@@ -1,97 +1,244 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
 using UnityEngine.Rendering;
+using UnityEngine.UI;
+using UnityEditor;
 
 namespace Ricercar.Gravity
 {
     public class GravityVisualizer : MonoBehaviour
     {
-        private static Gradient m_colourGradient;
+        private enum PowerOfTwoResolution 
+        { 
+            _16 = 16,
+            _32 = 32,
+            _64 = 64,
+            _128 = 128,
+            _256 = 256,
+            _512 = 512,
+            _1024 = 1024,
+            _2048 = 2048,
+            _4096 = 4096,
+        };
 
-        [SerializeField]
-        private bool m_staticOnly = false;
+        //// 256 x 256 = 16 x 16 x 16 x 16
+        //private const int THREAD_GROUPS = 65536;
 
-        [SerializeField]
-        private bool m_showField = false;
+        //private const int THREAD_GROUPS_SQRT = 16;
 
-        [SerializeField]
-        private Camera m_camera;
+        private const string POINT_ARRAY_PROPERTY = "_Points";
+        private const string FIELD_SIZE_PROPERTY = "_FieldSize";
+        private const string EFFECT_SCALAR_PROPERTY = "_ColourScale";
+        private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
-        [SerializeField]
-        [ShowIf("m_showField")]
-        [MinValue(0f)]
-        private float m_vectorScale = 1f;
-
-        [SerializeField]
-        [ShowIf("m_showField")]
-        [MinValue(0f)]
-        private float m_arrowScale = 0.3f;
-
-        [SerializeField]
-        [ShowIf("m_showField")]
-        [MinValue(0f)]
-        private float m_minVectorMagnitude = 0.05f;
-
-        [SerializeField]
-        [ShowIf("m_showField")]
-        [MinValue(0f)]
-        private float m_maxVectorMagnitude = 2f;
-
-        [SerializeField]
-        [ShowIf("m_showField")]
-        [MinValue(1)]
-        private int m_fieldResolution = 10;
-
-        private void OnValidate()
+        public enum ColourMode
         {
-            if (m_colourGradient == null)
-                m_colourGradient = Utils.CreateGradient(Color.white, Color.white, Color.blue, Color.red);
+            Distortion,
+            Legible
         }
 
-//#if UNITY_EDITOR
-//        private void OnDrawGizmos()
-//        {
-//            if (!m_showField)
-//                return;
+        [SerializeField]
+        private GravityField m_gravityField;
 
-//            Vector2 bottomLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 0f, 10f));
-//            Vector2 topLeft = m_camera.ViewportToWorldPoint(new Vector3(0f, 1f, 10f));
-//            Vector2 bottomRight = m_camera.ViewportToWorldPoint(new Vector3(1f, 0f, 10f));
+        private Transform m_transform;
 
-//            Vector2 xComponent = Vector2.Lerp(bottomLeft, bottomRight, 1f / (m_fieldResolution - 1f)) - bottomLeft;
-//            Vector2 yComponent = Vector2.Lerp(bottomLeft, topLeft, 1f / (m_fieldResolution - 1f)) - bottomLeft;
+        [SerializeField]
+        private ComputeShader m_gravityFieldComputeShader;
 
-//            for (int x = 0; x < m_fieldResolution; x++)
-//            {
-//                for (int y = 0; y < m_fieldResolution; y++)
-//                {
-//                    Vector2 pos = bottomLeft + xComponent * x + yComponent * y;
+        private ComputeBuffer m_fieldOutputBuffer;
+        private int m_computeFullFieldKernel = -1;
 
-//                    Vector2 attraction;
+        [SerializeField]
+        private Canvas m_canvas;
 
-//                    if (m_staticOnly)
-//                        attraction = GravityField.GetStaticGravity(pos);
-//                    else
-//                        attraction = GravityField.GetGravity(pos);
+        [SerializeField]
+        private RawImage m_rawImage;
 
-//                    if (attraction.magnitude * m_vectorScale <= m_minVectorMagnitude)
-//                        continue;
+        [SerializeField]
+        private Texture m_background;
 
-//                    float attractionMagnitude = Mathf.Clamp(attraction.magnitude * m_vectorScale, m_minVectorMagnitude, m_maxVectorMagnitude);
+        [SerializeField]
+        private Material m_material;
 
-//                    float arrowScalar = Mathf.InverseLerp(m_minVectorMagnitude, m_maxVectorMagnitude, attractionMagnitude);
+        [SerializeField]
+        private Material m_materialInstance;
 
-//                    Vector3 attractionDirection = attraction.normalized;
+        [SerializeField]
+        [MinValue(0f)]
+        private float m_effectScalar = 0.01f;
 
-//                    Color col = m_colourGradient.Evaluate(Mathf.InverseLerp(0f, 2f, attractionMagnitude));
+        [SerializeField]
+        private PowerOfTwoResolution m_gravitySampleResolution = PowerOfTwoResolution._256;
 
-//                    Utils.DrawArrow(pos, attractionDirection, col, attractionMagnitude * m_vectorScale, m_arrowScale * arrowScalar);
-//                }
-//            }
-//        }
-//#endif
+        [SerializeField]
+        private PowerOfTwoResolution m_textureResolution = PowerOfTwoResolution._512;
+
+        //private bool IsPowerOfTwo(int value) => value != 0 && ((value & (value - 1)) == 0);
+
+        [SerializeField]
+        [OnValueChanged("OnColourModeChanged")]
+        private ColourMode m_colourMode;
+
+        [SerializeField]
+        [ReadOnly]
+        private float m_size;
+
+        private void Start()
+        {
+            Initialize();
+
+            m_rawImage.texture = null;
+            m_rawImage.material = m_materialInstance;
+
+            m_transform.hasChanged = false;
+        }
+
+        private void Initialize()
+        {
+            m_transform = transform;
+            m_size = (m_canvas.transform as RectTransform).rect.width;
+
+            m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
+
+            // 256 x 256
+            m_fieldOutputBuffer = new ComputeBuffer((int)m_gravitySampleResolution * (int)m_gravitySampleResolution, 8);
+            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "GravityField", m_fieldOutputBuffer);
+
+            m_gravityFieldComputeShader.SetVector("BottomLeft", GetBottomLeft());
+            m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
+
+            m_materialInstance = new Material(m_material);
+            m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
+            m_materialInstance.SetInt(FIELD_SIZE_PROPERTY, (int)m_gravitySampleResolution);
+            m_materialInstance.SetBuffer(POINT_ARRAY_PROPERTY, m_fieldOutputBuffer);
+
+            if (m_colourMode == ColourMode.Distortion)
+                m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
+            else
+                m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+        }
+
+        private void ReleaseBuffers()
+        {
+            m_fieldOutputBuffer?.Release();
+        }
+
+        private void OnEnable()
+        {
+            m_gravityField.RegisterVisualizer(this);
+        }
+
+        private void OnDisable()
+        {
+            m_gravityField.DeregisterVisualizer(this);
+        }
+
+        private void OnDestroy()
+        {
+            ReleaseBuffers(); 
+            Destroy(m_materialInstance);
+        }
+        
+        public void SetInputData(ComputeBuffer inputBuffer)
+        {
+            if (m_computeFullFieldKernel == -1)
+                return;
+
+            Debug.Log("Setting input data in " + name, this);
+            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", inputBuffer);
+        }
+
+        private void Update()
+        {
+            if (m_transform.hasChanged)
+            {
+                OnMoved();
+                m_transform.hasChanged = false;
+            }
+
+            if (!enabled || m_computeFullFieldKernel < 0 || m_materialInstance == null)
+                return;
+
+            Debug.Log("Dispatching in " + name, this);
+            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
+        }
+
+        [Button]
+        private void SetTexture()
+        {
+            Initialize();
+
+            ComputeBuffer inputBuffer = m_gravityField.ForceGeneratePointInputBuffer();
+
+            if (inputBuffer == null)
+                Debug.Log("It's null!");
+
+            SetInputData(inputBuffer);
+            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
+
+            m_rawImage.texture = GenerateTexture();
+
+            ReleaseBuffers();
+            m_gravityField.ReleaseBuffers();
+
+#if UNITY_EDITOR
+            EditorUtility.SetDirty(this);
+            EditorUtility.SetDirty(m_rawImage);
+#endif
+        }
+
+        private Texture2D GenerateTexture()
+        {
+            RenderTexture destination = RenderTexture.GetTemporary((int)m_textureResolution, (int)m_textureResolution);
+            Graphics.Blit(m_background, destination, m_materialInstance);
+
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = destination;
+
+            Texture2D tex = new Texture2D((int)m_textureResolution, (int)m_textureResolution)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat
+            };
+
+            tex.ReadPixels(new Rect(0, 0, (int)m_textureResolution, (int)m_textureResolution), 0, 0, false);
+            tex.Apply();
+
+            RenderTexture.active = active;
+            RenderTexture.ReleaseTemporary(destination);
+
+            return tex;
+        }
+
+        public Vector2 GetTopRight()
+        {
+            return (Vector2)m_transform.position + Vector2.one * m_size * 0.5f;
+        }
+
+        public Vector2 GetBottomLeft()
+        {
+            return (Vector2)m_transform.position - Vector2.one * m_size * 0.5f;
+        }
+
+        private void OnColourModeChanged()
+        {
+            if (m_materialInstance == null)
+                return;
+
+            if (m_colourMode == ColourMode.Distortion)
+                m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
+            else
+                m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+        }
+
+        private void OnMoved()
+        {
+            m_gravityFieldComputeShader.SetVector("BottomLeft", GetBottomLeft());
+            m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
+        }
     }
 
 }
