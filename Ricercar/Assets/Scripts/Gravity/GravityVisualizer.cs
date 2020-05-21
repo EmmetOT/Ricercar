@@ -32,6 +32,7 @@ namespace Ricercar.Gravity
         private const string POINT_ARRAY_PROPERTY = "_Points";
         private const string FIELD_SIZE_PROPERTY = "_FieldSize";
         private const string EFFECT_SCALAR_PROPERTY = "_ColourScale";
+        private const string GRID_SCALE_PROPERTY = "_GridScale";
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
         public enum ColourMode
@@ -69,6 +70,10 @@ namespace Ricercar.Gravity
         [SerializeField]
         [MinValue(0f)]
         private float m_effectScalar = 0.01f;
+
+        [SerializeField]
+        [OnValueChanged("OnGridScaleChanged")]
+        private float m_gridScale = 0.2f;
 
         [SerializeField]
         private PowerOfTwoResolution m_gravitySampleResolution = PowerOfTwoResolution._256;
@@ -111,6 +116,7 @@ namespace Ricercar.Gravity
             m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
 
             m_materialInstance = new Material(m_material);
+            m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
             m_materialInstance.SetInt(FIELD_SIZE_PROPERTY, (int)m_gravitySampleResolution);
             m_materialInstance.SetBuffer(POINT_ARRAY_PROPERTY, m_fieldOutputBuffer);
@@ -162,7 +168,6 @@ namespace Ricercar.Gravity
             if (!enabled || m_computeFullFieldKernel < 0 || m_materialInstance == null)
                 return;
 
-            Debug.Log("Dispatching in " + name, this);
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
         }
 
@@ -238,6 +243,11 @@ namespace Ricercar.Gravity
         {
             m_gravityFieldComputeShader.SetVector("BottomLeft", GetBottomLeft());
             m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
+        }
+
+        private void OnGridScaleChanged()
+        {
+            m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
         }
     }
 

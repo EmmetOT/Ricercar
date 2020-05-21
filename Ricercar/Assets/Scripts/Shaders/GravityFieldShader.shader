@@ -6,6 +6,7 @@
 		
 		_FieldSize("Field Size", int) = 0
 		_ColourScale("Colour Scale", float) = 1
+		_GridScale("Grid Scale", float) = 0.2
 		[Toggle(IS_DISTORTION_MAP)] _IsDistortionMap("Is Distortion Map", float) = 0
 	}
 
@@ -66,6 +67,7 @@
 				float2 uv : TEXCOORD0;
 				float4 vertex : SV_POSITION;
 				fixed4 color : COLOR;
+				float3 worldPos : TEXCOORD1;
 				UNITY_FOG_COORDS(1)
 			};
 
@@ -76,12 +78,14 @@
 
 			uniform int _FieldSize;
 			uniform float _ColourScale;
+			uniform float _GridScale;
 
 			v2f vert(appdata_t v)
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+				o.worldPos = mul (unity_ObjectToWorld, v.vertex);
 				o.color = v.color;
 				UNITY_TRANSFER_FOG(o, o.vertex);
 				return o;
@@ -114,8 +118,7 @@
 
 			#ifdef IS_DISTORTION_MAP
 
-				float2 distortedUVs = float2((-gravity.x * _ColourScale) + i.uv.x * 6, -gravity.y * _ColourScale + i.uv.y * 6);
-				fixed4 texCol = tex2D(_MainTex, i.uv - gravity);
+				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - gravity) / _GridScale;
 
 				float colourMagLerp = length(gravity) * 0.05;
 
