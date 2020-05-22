@@ -81,8 +81,6 @@ namespace Ricercar.Gravity
         [SerializeField]
         private PowerOfTwoResolution m_textureResolution = PowerOfTwoResolution._512;
 
-        //private bool IsPowerOfTwo(int value) => value != 0 && ((value & (value - 1)) == 0);
-
         [SerializeField]
         [OnValueChanged("OnColourModeChanged")]
         private ColourMode m_colourMode;
@@ -153,7 +151,8 @@ namespace Ricercar.Gravity
             if (m_computeFullFieldKernel == -1)
                 return;
 
-            Debug.Log("Setting input data in " + name, this);
+            Debug.Log("Set " + name + "'s input buffer!", this);
+
             m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", inputBuffer);
         }
 
@@ -179,12 +178,14 @@ namespace Ricercar.Gravity
             ComputeBuffer inputBuffer = m_gravityField.ForceGeneratePointInputBuffer();
 
             if (inputBuffer == null)
-                Debug.Log("It's null!");
+                return;
 
             SetInputData(inputBuffer);
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
 
             m_rawImage.texture = GenerateTexture();
+
+            Destroy(m_materialInstance);
 
             ReleaseBuffers();
             m_gravityField.ReleaseBuffers();

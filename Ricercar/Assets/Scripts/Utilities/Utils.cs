@@ -399,7 +399,6 @@ namespace Ricercar
 
             Gizmos.DrawLine(position, position + direction * magnitudeScale);
 
-
             Gizmos.DrawMesh(m_triangle, 0, position + direction * magnitudeScale, Quaternion.LookRotation(Vector3.forward, direction), Vector3.one * arrowScale);
         }
 

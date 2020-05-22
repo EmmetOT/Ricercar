@@ -113,8 +113,6 @@ namespace Ricercar.Gravity
             if (m_visualizers.Contains(visualizer))
                 return;
 
-            Debug.Log("Registering " + visualizer.name, visualizer);
-
             m_visualizers.Add(visualizer);
 
             visualizer.SetInputData(m_pointInputBuffer);
@@ -133,6 +131,8 @@ namespace Ricercar.Gravity
         public ComputeBuffer ForceGeneratePointInputBuffer()
         {
             m_attractors = new List<IAttractor>(FindObjectsOfType<PointAttractor>());
+            m_attractors.AddRange(FindObjectsOfType<NonRigidbodyAttractor>());
+
             m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
             RefreshComputeBuffers();
             ComputePointForces();
@@ -211,8 +211,7 @@ namespace Ricercar.Gravity
         {
             for (int i = 0; i < m_attractorCount; i++)
             {
-                if (!m_attractorOutputData[i].IsNaN()
-                    && m_attractorOutputData[i].sqrMagnitude > MIN_MOVEMENT_SQR_MAGNITUDE)
+                if (!m_attractorOutputData[i].IsNaN() && m_attractorOutputData[i].sqrMagnitude > MIN_MOVEMENT_SQR_MAGNITUDE)
                 {
                     m_attractors[i].SetGravity(m_attractorOutputData[i]);
                 }
