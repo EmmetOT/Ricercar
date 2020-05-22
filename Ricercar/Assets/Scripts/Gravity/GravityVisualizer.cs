@@ -63,8 +63,6 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         private Material m_material;
-
-        [SerializeField]
         private Material m_materialInstance;
 
         [SerializeField]
@@ -89,29 +87,20 @@ namespace Ricercar.Gravity
         [ReadOnly]
         private float m_size;
 
-        private void Start()
-        {
-            Initialize();
-
-            m_rawImage.texture = null;
-            m_rawImage.material = m_materialInstance;
-
-            m_transform.hasChanged = false;
-        }
+        private Vector2 m_bottomLeft;
+        private Vector2 m_topRight;
 
         private void Initialize()
         {
             m_transform = transform;
             m_size = (m_canvas.transform as RectTransform).rect.width;
+            m_bottomLeft = GetBottomLeft();
+            m_topRight = GetTopRight();
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
 
             // 256 x 256
             m_fieldOutputBuffer = new ComputeBuffer((int)m_gravitySampleResolution * (int)m_gravitySampleResolution, 8);
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "GravityField", m_fieldOutputBuffer);
-
-            m_gravityFieldComputeShader.SetVector("BottomLeft", GetBottomLeft());
-            m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
 
             m_materialInstance = new Material(m_material);
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
@@ -123,6 +112,11 @@ namespace Ricercar.Gravity
                 m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
             else
                 m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+
+            m_rawImage.texture = null;
+            m_rawImage.material = m_materialInstance;
+
+            m_transform.hasChanged = false;
         }
 
         private void ReleaseBuffers()
@@ -132,20 +126,17 @@ namespace Ricercar.Gravity
 
         private void OnEnable()
         {
+            Initialize();
             m_gravityField.RegisterVisualizer(this);
         }
 
         private void OnDisable()
         {
             m_gravityField.DeregisterVisualizer(this);
-        }
-
-        private void OnDestroy()
-        {
-            ReleaseBuffers(); 
+            ReleaseBuffers();
             Destroy(m_materialInstance);
         }
-        
+
         public void SetInputData(ComputeBuffer inputBuffer)
         {
             if (m_computeFullFieldKernel == -1)
@@ -167,6 +158,10 @@ namespace Ricercar.Gravity
             if (!enabled || m_computeFullFieldKernel < 0 || m_materialInstance == null)
                 return;
 
+            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "GravityField", m_fieldOutputBuffer);
+            m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
+            m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
+
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
         }
 
@@ -185,7 +180,7 @@ namespace Ricercar.Gravity
 
             m_rawImage.texture = GenerateTexture();
 
-            Destroy(m_materialInstance);
+            DestroyImmediate(m_materialInstance);
 
             ReleaseBuffers();
             m_gravityField.ReleaseBuffers();
@@ -242,8 +237,8 @@ namespace Ricercar.Gravity
 
         private void OnMoved()
         {
-            m_gravityFieldComputeShader.SetVector("BottomLeft", GetBottomLeft());
-            m_gravityFieldComputeShader.SetVector("TopRight", GetTopRight());
+            m_bottomLeft = GetBottomLeft();
+            m_topRight = GetTopRight();
         }
 
         private void OnGridScaleChanged()
