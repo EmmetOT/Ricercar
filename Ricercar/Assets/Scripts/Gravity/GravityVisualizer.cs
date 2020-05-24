@@ -67,6 +67,7 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         [MinValue(0f)]
+        [OnValueChanged("OnEffectScalarChanged")]
         private float m_effectScalar = 0.01f;
 
         [SerializeField]
@@ -141,8 +142,6 @@ namespace Ricercar.Gravity
         {
             if (m_computeFullFieldKernel == -1)
                 return;
-
-            Debug.Log("Set " + name + "'s input buffer!", this);
 
             m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", inputBuffer);
         }
@@ -244,6 +243,11 @@ namespace Ricercar.Gravity
         private void OnGridScaleChanged()
         {
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
+        }
+
+        private void OnEffectScalarChanged()
+        {
+            m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
         }
     }
 

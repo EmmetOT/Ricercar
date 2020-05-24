@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
+using UnityEditor;
 
 namespace Ricercar.Gravity
 {
@@ -10,19 +11,24 @@ namespace Ricercar.Gravity
         Vector2 Position { get; }
         Vector2 Velocity { get; }
         float Mass { get; }
+        float Radius { get; }
         bool AffectsField { get; }
+        float SurfaceGravityForce { get; }
 
         void SetGravity(Vector2 gravity);
     }
 
     public struct AttractorData
     {
-        public const int Stride = 16;
+        // 6 * 4
+        public const int Stride = 24;
 
         public float x;
         public float y;
         public int ignore;
         public float mass;
+        public float radius;
+        public float surfaceGravityForce;
 
         public AttractorData(IAttractor attractor)
         {
@@ -32,16 +38,19 @@ namespace Ricercar.Gravity
             y = pos.y;
             ignore = attractor.AffectsField ? 0 : 1;
             mass = attractor.Mass;
+            radius = attractor.Radius;
+            surfaceGravityForce = attractor.SurfaceGravityForce;
+        }
+
+        public override string ToString()
+        {
+            return $"x:\t{x}\ny:\t{y}\nignore:\t{ignore}\nmass:\t{mass}\nradius:\t{radius}\nsurfaceGravityForce:\t{surfaceGravityForce}";
         }
     }
 
     [RequireComponent(typeof(Rigidbody2D))]
     public abstract class Attractor : MonoBehaviour, IAttractor
     {
-        //[SerializeField]
-        //protected bool m_isStatic = false;
-        //public bool IsStatic => m_isStatic;
-
         [SerializeField]
         protected GravityField m_gravityField;
 
@@ -67,19 +76,39 @@ namespace Ricercar.Gravity
         [HideIf("m_useRigidbodyMass")]
         private float m_mass;
 
+        [SerializeField]
+        private bool m_isShell = false;
+
+        [SerializeField]
+        [MinValue(0f)]
+        [ShowIf("m_isShell")]
+        private float m_radius = 0f;
+        public float Radius => m_isShell ? m_radius : 0f;
+
+        [SerializeField]
+        [ReadOnly]
+        [ShowIf("m_isShell")]
+        private float m_surfaceGravityForce = 1f;
+        public float SurfaceGravityForce => (m_isShell && m_radius > 0f) ? m_surfaceGravityForce : 1f;
+
         public float Mass => m_useRigidbodyMass ? m_rigidbody.mass : m_mass;
-        public Vector2 Position => m_rigidbody.position;
+        public Vector2 Position => transform.position;
         public Vector2 Velocity => m_rigidbody.velocity;
 
-        public Vector2 CurrentGravity
-        {
-            get;
-            private set;
-        }
+        [SerializeField]
+        [ReadOnly]
+        private Vector2 m_currentGravity;
+        public Vector2 CurrentGravity => m_currentGravity;
 
         private void Reset()
         {
             m_rigidbody = GetComponent<Rigidbody2D>();
+            CalculateSurfaceGravity();
+        }
+
+        private void OnValidate()
+        {
+            CalculateSurfaceGravity();
         }
 
         public void SetGravity(Vector2 gravity)
@@ -87,8 +116,26 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            CurrentGravity = gravity;
-            m_rigidbody.AddForce(CurrentGravity);
+            m_currentGravity = gravity;
+            m_rigidbody.AddForce(m_currentGravity);
+        }
+
+        [Button("Calculate Surface Gravity")]
+        public void CalculateSurfaceGravity()
+        {
+            if (!m_isShell)
+            {
+                m_surfaceGravityForce = Mathf.Infinity;
+                return;
+            }    
+
+            m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
+        }
+
+        [Button("Print GPU Data")]
+        public void PrintGPUData()
+        {
+            Debug.Log(new AttractorData(this));
         }
 
         //        /// <summary>
@@ -122,24 +169,15 @@ namespace Ricercar.Gravity
         //            return direction * forceMagnitude;
         //        }
 
-        //#if UNITY_EDITOR
-        //        protected virtual void OnDrawGizmos()
-        //        {
-        //            if (Application.isPlaying && m_tracePath)
-        //            {
-        //                Gizmos.color = Color.white;
-        //                for (int i = 0; i < m_pathPoints.Count - 1; i++)
-        //                {
-        //                    Gizmos.DrawLine(m_pathPoints[i], m_pathPoints[i + 1]);
-        //                }
-        //            }
-
-        //            if (!Application.isPlaying && !m_startingForce.IsZero())
-        //            {
-        //                Gizmos.color = Color.white;
-        //                Gizmos.DrawLine(m_rigidbody.position, m_rigidbody.position + m_startingForce);
-        //            }
-        //        }
-        //#endif
+#if UNITY_EDITOR
+        protected virtual void OnDrawGizmos()
+        {
+            if (m_isShell)
+            {
+                Handles.color = Color.white;
+                Handles.DrawWireDisc(transform.position, Vector3.back, m_radius);
+            }
+        }
+#endif
     }
 }

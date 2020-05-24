@@ -31,9 +31,30 @@ namespace Ricercar.Gravity
         private Vector2 m_velocity = Vector2.zero;
         public Vector2 Velocity => m_velocity;
 
-        public void Reset()
+        [SerializeField]
+        private bool m_isShell = false;
+
+        [SerializeField]
+        [MinValue(0f)]
+        [ShowIf("m_isShell")]
+        private float m_radius = 0f;
+        public float Radius => m_isShell ? m_radius : 0f;
+
+        [SerializeField]
+        [ReadOnly]
+        [ShowIf("m_isShell")]
+        private float m_surfaceGravityForce = Mathf.Infinity;
+        public float SurfaceGravityForce => (m_isShell && m_radius > 0f) ? m_surfaceGravityForce : 1f;
+
+        private void Reset()
         {
             m_transform = transform;
+            CalculateSurfaceGravity();
+        }
+
+        private void OnValidate()
+        {
+            CalculateSurfaceGravity();
         }
 
         public void Awake()
@@ -43,6 +64,9 @@ namespace Ricercar.Gravity
 
         public void OnEnable()
         {
+            if (m_gravityField == null)
+                m_gravityField = FindObjectOfType<GravityField>();
+
             m_gravityField.RegisterAttractor(this);
         }
 
@@ -59,6 +83,16 @@ namespace Ricercar.Gravity
             m_currentGravity = gravity;
         }
 
+        public void AddVelocity(Vector2 velocity)
+        {
+            m_velocity += velocity;
+        }
+
+        public void SetPosition(Vector2 position)
+        {
+            m_transform.position = position;
+        }
+
         private void Update()
         {
             if (!m_applyForceToSelf)
@@ -66,6 +100,18 @@ namespace Ricercar.Gravity
 
             m_velocity += m_currentGravity * Time.deltaTime;
             m_transform.position += (Vector3)m_velocity * Time.deltaTime;
+        }
+
+        [Button]
+        public void CalculateSurfaceGravity()
+        {
+            if (!m_isShell)
+            {
+                m_surfaceGravityForce = Mathf.Infinity;
+                return;
+            }
+
+            m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
         }
     }
 }

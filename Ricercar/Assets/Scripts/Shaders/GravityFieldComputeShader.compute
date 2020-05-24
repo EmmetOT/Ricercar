@@ -12,6 +12,8 @@ struct AttractorData
     float y;
     int ignore;
     float mass;
+    float radius;
+    float surfaceGravityForce;
 };
 
 struct AtomicVector2
@@ -34,14 +36,38 @@ int PointCount;
 float4 BottomLeft;
 float4 TopRight;
 
-int when_eq(int x, int y) 
+int when_eq(float x, float y) 
 {
     return 1 - abs(sign(x - y));
 }
 
-int when_neq(int x, int y) 
+int when_neq(float x, float y) 
 {
     return abs(sign(x - y));
+}
+
+int when_gt(float x, float y) 
+{
+  return max(sign(x - y), 0);
+}
+
+int when_lt(float x, float y) 
+{
+    // 10 < 60?
+    //  sign(60 - 10) = 1
+    //  max(1, 0)
+    //  1 
+    return max(sign(y - x), 0);
+}
+
+int when_ge(float x, float y) 
+{
+  return 1 - when_lt(x, y);
+}
+
+int when_le(float x, float y) 
+{
+  return 1 - when_gt(x, y);
 }
 
 int and(int a, int b) 
@@ -75,10 +101,11 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     
     for (int i = 0; i < PointCount; i++)
     {
-        int doNotCount = PointAttractors[i].ignore;
+        AttractorData otherPoint = PointAttractors[i];
+        int doNotCount = otherPoint.ignore;
 
-        float2 pointPosition = float2(PointAttractors[i].x + doNotCount, PointAttractors[i].y + doNotCount);
-        float mass = PointAttractors[i].mass;
+        float2 pointPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
+        float mass = otherPoint.mass;
 
         float2 difference = pointPosition - position;
 
@@ -88,6 +115,11 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         float2 direction = difference / magnitude;
 
         float forceMagnitude = G * mass / sqrMagnitude;
+
+        float shellGravity = lerp(0, otherPoint.surfaceGravityForce, magnitude / max(otherPoint.radius, 0.0001));
+        int insideShell = when_lt(magnitude, otherPoint.radius);
+
+        forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
 	}
@@ -146,13 +178,14 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
 
     for (int i = 0; i < PointCount; i++)
     {
+        AttractorData otherPoint = PointAttractors[i];
+
         // we dont want to add the gravity 
         // for the attractor to itself. this value returns 1 if the indices are equal,
         // else 0
         // we also use this to disable gravitation towards certain objects
-        int doNotCount = or(currentPoint.ignore, when_eq(i, id.x));
+        int doNotCount = or(otherPoint.ignore, when_eq(i, id.x));
 
-        AttractorData otherPoint = PointAttractors[i];
         // adding the value here to prevent a division by 0. it doesn't matter, this calculation
         // will be discarded anyway
         float2 otherPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
@@ -166,6 +199,17 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
         float2 direction = difference / magnitude;
 
         float forceMagnitude = (G * mass * otherMass) / sqrMagnitude;
+
+        // account for gravity radius: if we're within the radius of the attracting object,
+        // force of gravity approaches zero 
+        
+        //if (magnitude < otherPoint.radius)
+        //     forceMagnitude = lerp(0, otherPoint.surfaceGravityForce, magnitude / otherPoint.radius);
+
+        float shellGravity = lerp(0, otherPoint.surfaceGravityForce, magnitude / max(otherPoint.radius, 0.0001));
+        int insideShell = when_lt(magnitude, otherPoint.radius);
+
+        forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
     }

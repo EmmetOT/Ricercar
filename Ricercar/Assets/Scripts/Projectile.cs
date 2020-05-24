@@ -9,16 +9,12 @@ namespace Ricercar
     public class Projectile : MonoBehaviour
     {
         [SerializeField]
-        private Attractor m_attractor;
-
-        [SerializeField]
-        private Rigidbody2D m_rigidbody;
+        private NonRigidbodyAttractor m_attractor;
 
         public void Initialize(Vector2 startPosition, Vector2 startVelocity)
         {
-            m_rigidbody.position = startPosition;
-            //m_rigidbody.rotation = startPosition;
-            m_rigidbody.velocity = startVelocity;
+            m_attractor.SetPosition(startPosition);
+            m_attractor.AddVelocity(startVelocity);
         }
     }
 }

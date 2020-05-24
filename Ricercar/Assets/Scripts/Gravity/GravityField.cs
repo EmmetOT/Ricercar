@@ -1,5 +1,4 @@
-﻿using Boo.Lang.Runtime.DynamicDispatching;
-using NaughtyAttributes;
+﻿using NaughtyAttributes;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -114,8 +113,7 @@ namespace Ricercar.Gravity
                 return;
 
             m_visualizers.Add(visualizer);
-
-            visualizer.SetInputData(m_pointInputBuffer);
+            RefreshComputeBuffers();
         }
 
         public void DeregisterVisualizer(GravityVisualizer visualizer)
@@ -211,11 +209,19 @@ namespace Ricercar.Gravity
         {
             for (int i = 0; i < m_attractorCount; i++)
             {
-                if (!m_attractorOutputData[i].IsNaN() && m_attractorOutputData[i].sqrMagnitude > MIN_MOVEMENT_SQR_MAGNITUDE)
+                if (!m_attractorOutputData[i].IsNaN())
                 {
                     m_attractors[i].SetGravity(m_attractorOutputData[i]);
                 }
             }
+        }
+
+        private void Update()
+        {
+            if (m_computePointForcesKernel < 0)
+                return;
+
+            ComputePointForces();
         }
 
         private void FixedUpdate()
@@ -223,7 +229,6 @@ namespace Ricercar.Gravity
             if (m_computePointForcesKernel < 0)
                 return;
 
-            ComputePointForces();
             ApplyPointForces();
         }
 

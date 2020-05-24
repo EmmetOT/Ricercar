@@ -16,10 +16,10 @@ namespace Ricercar.Gravity
     /// </summary>
     public class ShellAttractor : PointAttractor
     {
-        [SerializeField]
-        [BoxGroup("Shell")]
-        [MinValue(0f)]
-        private float m_radius = 1f;
+        //[SerializeField]
+        //[BoxGroup("Shell")]
+        //[MinValue(0f)]
+        //private float m_radius = 1f;
 
 //        public override Vector2 CalculateGravitationalForce(Vector2 position, bool checkNeutralizers = false)
 //        {
