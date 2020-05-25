@@ -28,8 +28,12 @@ struct AtomicVector2
     int Y;
 };
 
-// the resulting 2d array of gravity vectors
-RWStructuredBuffer<float2> GravityField;
+// the resulting 2d array of gravity vectors,
+// the z component represents the average "towardsiness" 
+// of each point, i.e. a high negative value means
+// the vector is moving away from other points, a high positive
+// value means it's moving towards those points
+RWStructuredBuffer<float3> GravityField;
 
 // 2d positions where z corresponds to mass of the point
 StructuredBuffer<AttractorData> PointAttractors;
@@ -127,8 +131,10 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
     position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (THREAD_GROUP_SIZE - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (THREAD_GROUP_SIZE - 1.0)));
 
-    float2 result = float2(0, 0);
+    float3 result = float3(0, 0, 0);
     
+    int validAttractors = 0;
+
     for (int i = 0; i < PointCount; i++)
     {
         AttractorData otherPoint = PointAttractors[i];
@@ -159,8 +165,22 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
             forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
 		}
 
-        result += (1 - doNotCount) * (direction * forceMagnitude);
+        float2 gravityForce = (1 - doNotCount) * (direction * forceMagnitude);
+        float finalMagnitude = length(gravityForce);
+
+        float towardsiness = dot(normalize(gravityForce), direction) * finalMagnitude;
+        
+        validAttractors += 1 - isnan(towardsiness);
+
+        // not entirely sure whether this counts as branching,
+        // i need a way to convert a nan to a zero.
+        // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
+        towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+
+        result += float3(gravityForce.x, gravityForce.y, towardsiness);
 	}
+
+    result.z /= validAttractors;
 
     GravityField[id.x + THREAD_GROUP_SIZE * id.y] = result;
 }

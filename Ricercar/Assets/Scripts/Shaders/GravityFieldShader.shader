@@ -43,7 +43,7 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 
-			uniform StructuredBuffer<float2> _Points;
+			uniform StructuredBuffer<float3> _Points;
 
 			uniform int _FieldSize;
 			uniform float _ColourScale;
@@ -79,15 +79,15 @@
 				float x_t = invLerp(x0, x1, x * fieldSizeMinus1);
 				float y_t = invLerp(y0, y1, y * fieldSizeMinus1);
 
-				float2 gravityBottomLeft = _Points[y0 * _FieldSize + x0];
-				float2 gravityBottomRight = _Points[y0 * _FieldSize + x1];
-				float2 gravityTopLeft = _Points[y1 * _FieldSize + x0];
-				float2 gravityTopRight = _Points[y1 * _FieldSize + x1];
+				float3 gravityBottomLeft = _Points[y0 * _FieldSize + x0];
+				float3 gravityBottomRight = _Points[y0 * _FieldSize + x1];
+				float3 gravityTopLeft = _Points[y1 * _FieldSize + x0];
+				float3 gravityTopRight = _Points[y1 * _FieldSize + x1];
 
-				float2 lerp_bottom = lerp(gravityBottomLeft, gravityBottomRight, x_t);
-				float2 lerp_top = lerp(gravityTopLeft, gravityTopRight, x_t);
+				float3 lerp_bottom = lerp(gravityBottomLeft, gravityBottomRight, x_t);
+				float3 lerp_top = lerp(gravityTopLeft, gravityTopRight, x_t);
 				
-				return float4(lerp(lerp_bottom, lerp_top, y_t), 0, 1);
+				return float4(lerp(lerp_bottom, lerp_top, y_t), 1);
 			}
 
 			struct appdata_t
@@ -119,15 +119,24 @@
 
 			fixed4 frag(v2f i) : SV_Target
 			{
-				float4 gravity = sampleGravity(i.uv.x, i.uv.y);
+				float4 gravityData = sampleGravity(i.uv.x, i.uv.y);
+				float2 gravity = float2(gravityData.x, gravityData.y);
+				float towardsiness = gravityData.z;
 
 			#ifdef IS_DISTORTION_MAP
 
 				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - gravity) / _GridScale;
 
-				float colourMagLerp = length(gravity) * _ColourScale;
+				// split towardsiness into values representing its negativeness and positiveness
 
-				return tex2D(_MainTex, distortedUVs) * lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), colourMagLerp);
+				float positiveTowardsiness = max(0, towardsiness) * _ColourScale;
+				float negativeTowardsiness = -min(0, towardsiness) * _ColourScale;
+
+				float4 sampleCol = tex2D(_MainTex, distortedUVs);
+				float4 tint = lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), positiveTowardsiness);
+				tint = lerp(tint, float4(1, 0, 0, 1), negativeTowardsiness);
+
+				return sampleCol * tint;
 
 			#else
 

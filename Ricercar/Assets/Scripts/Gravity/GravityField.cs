@@ -55,10 +55,10 @@ namespace Ricercar.Gravity
         [SerializeField]
         private ComputeShader m_gravityFieldComputeShader;
 
-        [SerializeField]
-        [OnValueChanged("OnParallelModeChanged")]
-        [Tooltip("Decide whether each pairwise point attraction is calculated in a different thread, or in a single series for loop. May produce different results.")]
-        private bool m_parallelMode = false;
+        //[SerializeField]
+        //[OnValueChanged("OnParallelModeChanged")]
+        //[Tooltip("Decide whether each pairwise point attraction is calculated in a different thread, or in a single series for loop. May produce different results.")]
+        //private bool m_parallelMode = false;
 
         private int m_computePointForcesKernel = -1;
 
@@ -75,7 +75,7 @@ namespace Ricercar.Gravity
 
         private void Start()
         {
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(/*m_parallelMode ? "ComputePointForcesParallel" : */"ComputePointForcesSeries");
             RefreshComputeBuffers();
         }
 
@@ -131,7 +131,7 @@ namespace Ricercar.Gravity
             m_attractors = new List<IAttractor>(FindObjectsOfType<SimpleRigidbodyAttractor>());
             m_attractors.AddRange(FindObjectsOfType<NonRigidbodyAttractor>());
 
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(/*m_parallelMode ? "ComputePointForcesParallel" : */"ComputePointForcesSeries");
             RefreshComputeBuffers();
             ComputePointForces();
             return m_pointInputBuffer;
@@ -153,11 +153,11 @@ namespace Ricercar.Gravity
             m_pointForcesOutputBuffer = new ComputeBuffer(m_attractorCount, sizeof(float) * 2);
             m_pointInputBuffer = new ComputeBuffer(m_attractorCount, AttractorData.Stride);
 
-            if (m_parallelMode)
-            {
-                m_parallelOutputBuffer = new ComputeBuffer(m_attractorCount, AtomicVector2.Stride);
-                m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "AtomicForcesOutputBuffer", m_parallelOutputBuffer);
-            }
+            //if (m_parallelMode)
+            //{
+            //    m_parallelOutputBuffer = new ComputeBuffer(m_attractorCount, AtomicVector2.Stride);
+            //    m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "AtomicForcesOutputBuffer", m_parallelOutputBuffer);
+            //}
 
             m_attractorOutputData = new Vector2[m_attractorCount];
             m_parallelOutputData = new AtomicVector2[m_attractorCount];
@@ -186,23 +186,23 @@ namespace Ricercar.Gravity
 
             m_pointInputBuffer.SetData(m_attractorInputData);
 
-            if (m_parallelMode)
-            {
-                m_parallelOutputBuffer.SetData(m_parallelOutputData);
-                m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, m_attractorCount, 1);
-                m_parallelOutputBuffer.GetData(m_parallelOutputData);
+            //if (m_parallelMode)
+            //{
+            //    m_parallelOutputBuffer.SetData(m_parallelOutputData);
+            //    m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, m_attractorCount, 1);
+            //    m_parallelOutputBuffer.GetData(m_parallelOutputData);
 
-                for (int i = 0; i < m_parallelOutputData.Length; i++)
-                {
-                    m_attractorOutputData[i] = m_parallelOutputData[i];
-                    m_parallelOutputData[i] = new AtomicVector2(0, 0);
-                }
-            }
-            else
-            {
+            //    for (int i = 0; i < m_parallelOutputData.Length; i++)
+            //    {
+            //        m_attractorOutputData[i] = m_parallelOutputData[i];
+            //        m_parallelOutputData[i] = new AtomicVector2(0, 0);
+            //    }
+            //}
+            //else
+            //{
                 m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, 1, 1);
                 m_pointForcesOutputBuffer.GetData(m_attractorOutputData);
-            }
+            //}
         }
 
         private void ApplyPointForces()
@@ -234,7 +234,7 @@ namespace Ricercar.Gravity
 
         private void OnParallelModeChanged()
         {
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(/*m_parallelMode ? "ComputePointForcesParallel" : */"ComputePointForcesSeries");
             RefreshComputeBuffers();
         }
     }

@@ -101,7 +101,7 @@ namespace Ricercar.Gravity
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
 
             // 256 x 256
-            m_fieldOutputBuffer = new ComputeBuffer((int)m_gravitySampleResolution * (int)m_gravitySampleResolution, 8);
+            m_fieldOutputBuffer = new ComputeBuffer((int)m_gravitySampleResolution * (int)m_gravitySampleResolution, sizeof(float) * 3);
 
             m_materialInstance = new Material(m_material);
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
@@ -162,6 +162,19 @@ namespace Ricercar.Gravity
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
 
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
+        }
+
+        [Button("Test Field Data")]
+        private void TestFieldData()
+        {
+            Vector3[] data = new Vector3[100]; // 100 is a totally arbitrary choice
+
+            m_fieldOutputBuffer.GetData(data);
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                Debug.Log(i + ") " + data[i].ToString("F4"));
+            }
         }
 
         [Button]
