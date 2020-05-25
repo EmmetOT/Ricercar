@@ -80,7 +80,7 @@ namespace Ricercar
 
         protected Material m_material;
 
-        protected Attractor m_attractor;
+        protected IAttractor m_attractor;
 
         protected ObiCollider2D m_parentCollider;
 
@@ -112,7 +112,7 @@ namespace Ricercar
 
         public virtual void OnScroll(float delta) { }
 
-        public virtual void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Attractor attractor, ObiCollider2D parentCollider)
+        public virtual void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, IAttractor attractor, ObiCollider2D parentCollider)
         {
             CurrentAim = 0f;
 

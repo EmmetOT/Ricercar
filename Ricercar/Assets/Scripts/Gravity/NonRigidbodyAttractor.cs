@@ -27,6 +27,7 @@ namespace Ricercar.Gravity
         public Vector2 Position => m_transform.position;
 
         private Vector2 m_currentGravity = Vector2.zero;
+        public Vector2 CurrentGravity => m_currentGravity;
 
         private Vector2 m_velocity = Vector2.zero;
         public Vector2 Velocity => m_velocity;

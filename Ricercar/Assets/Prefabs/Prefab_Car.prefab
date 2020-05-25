@@ -95,7 +95,7 @@ GameObject:
   - component: {fileID: 5934547499753476590}
   - component: {fileID: 5934547499753476581}
   - component: {fileID: 5934547499753476579}
-  - component: {fileID: 8128543372278895364}
+  - component: {fileID: 4455731998775781869}
   m_Layer: 0
   m_Name: Prefab_Car
   m_TagString: Untagged
@@ -141,12 +141,13 @@ MonoBehaviour:
     m_componentProximity: 360
     m_control: 1
     m_alwaysActive: 0
-  m_attractor: {fileID: 8128543372278895364}
+  m_attractor: {fileID: 0}
   m_collider: {fileID: 5934547499753476579}
   m_material: {fileID: 2100000, guid: 555c5a5b69cc03a469832ab8004aa0e2, type: 2}
   m_ropeScrollSpeed: 2
   m_selectedColour: {r: 0, g: 0, b: 1, a: 1}
   m_unselectedColour: {r: 1, g: 0, b: 0, a: 1}
+  m_currentWheelIndex: 0
 --- !u!58 &5934547499753476591
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -213,7 +214,7 @@ MonoBehaviour:
   phase: 1
   thickness: 0
   sourceCollider: {fileID: 5934547499753476591}
---- !u!114 &8128543372278895364
+--- !u!114 &4455731998775781869
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -222,16 +223,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 5934547499753476589}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b5b054bbbd83a949bce1019e866d284, type: 3}
+  m_Script: {fileID: 11500000, guid: e8ae53b8f0544854eab0efbc2c44a596, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_affectLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
+  m_gravityField: {fileID: 0}
+  m_applyForceToSelf: 1
+  m_affectsField: 1
   m_startingForce: {x: 0, y: 0}
   m_rigidbody: {fileID: 5934547499753476590}
-  m_useRigidbodyMass: 1
+  m_useRigidbodyMass: 0
   m_mass: 0
-  m_applyForceToSelf: 1
-  m_affectsField: 0
-  m_tracePath: 0
+  m_isShell: 0
+  m_radius: 0
+  m_surfaceGravityForce: Infinity
+  m_transform: {fileID: 5934547499753476578}
+  m_currentGravity: {x: 0, y: 0}

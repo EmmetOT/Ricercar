@@ -24,7 +24,7 @@ namespace Ricercar
         private readonly List<Wheel> m_currentWheels = new List<Wheel>();
 
         [SerializeField]
-        private Attractor m_attractor;
+        private SimpleRigidbodyAttractor m_attractor;
 
         [SerializeField]
         private ObiCollider2D m_collider;

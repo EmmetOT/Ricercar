@@ -125,7 +125,8 @@ namespace Ricercar
         /// Returns whether this vector contains NaNs.
         /// </summary>
         public static bool IsNaN(this Vector3 vec)
-        { return float.IsNaN(vec.x) || float.IsNaN(vec.y) || float.IsNaN(vec.z);
+        {
+            return float.IsNaN(vec.x) || float.IsNaN(vec.y) || float.IsNaN(vec.z);
         }
 
         /// <summary>
@@ -463,24 +464,29 @@ namespace Ricercar
         /// </summary>
         public static Vector3 ProjectPointOnLineSegment(Vector3 a, Vector3 b, Vector3 point)
         {
-            Vector3 vector = b - a;
+            // if this method looks weird, it was because it was written to be shader code, and
+            // so has no conditionals
 
-            Vector3 projectedPoint = ProjectPointOnLine(a, vector.normalized, point);
+            Vector3 diff = b - a;
+            float diffMagnitude = diff.magnitude;
+            Vector3 lineDirection = diff / diffMagnitude;
 
-            int side = PointOnWhichSideOfLineSegment(a, b, projectedPoint);
+            //get vector from point on line to point in space
+            Vector3 linePointToLineDirection = point - a;
 
-            // The projected point is on the line segment
-            if (side == 0)
-                return projectedPoint;
+            // how far along the point is from a to b
+            float t = Vector3.Dot(linePointToLineDirection, lineDirection);
 
-            else if (side == 1)
-                return a;
+            Vector3 projectedPoint = a + lineDirection * t;
 
-            else if (side == 2)
-                return b;
+            Vector3 pointVec = projectedPoint - a;
 
-            //output is invalid
-            return Vector3.zero;
+            float dot = Vector3.Dot(pointVec, diff);
+
+            float dotGreaterThanZero = Mathf.Ceil(Mathf.Max(dot, 0f));
+            float pointVecMagnitudeLessThanOrEqualToDiffMagnitude = Mathf.Max(Mathf.Sign(diffMagnitude - pointVec.magnitude), 0f);
+
+            return Vector3.Lerp(a, Vector3.Lerp(b, projectedPoint, pointVecMagnitudeLessThanOrEqualToDiffMagnitude), dotGreaterThanZero);
         }
 
         private static Plane m_horizontalPlane;

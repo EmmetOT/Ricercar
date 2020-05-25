@@ -125,7 +125,7 @@
 
 				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - gravity) / _GridScale;
 
-				float colourMagLerp = length(gravity) * 0.05;
+				float colourMagLerp = length(gravity) * _ColourScale;
 
 				return tex2D(_MainTex, distortedUVs) * lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), colourMagLerp);
 

@@ -10,18 +10,29 @@ namespace Ricercar.Gravity
     {
         Vector2 Position { get; }
         Vector2 Velocity { get; }
+        Vector2 CurrentGravity { get; }
         float Mass { get; }
-        float Radius { get; }
         bool AffectsField { get; }
-        float SurfaceGravityForce { get; }
 
         void SetGravity(Vector2 gravity);
     }
 
+    public interface ISimpleAttractor : IAttractor
+    {
+        float Radius { get; }
+        float SurfaceGravityForce { get; }
+    }
+
+    public interface ILineAttractor : IAttractor
+    {
+        Vector2 Start { get; }
+        Vector2 End { get; }
+    }
+
     public struct AttractorData
     {
-        // 6 * 4
-        public const int Stride = 24;
+        // 11 * 4
+        public const int Stride = 44;
 
         public float x;
         public float y;
@@ -29,6 +40,12 @@ namespace Ricercar.Gravity
         public float mass;
         public float radius;
         public float surfaceGravityForce;
+
+        public int isLine;
+        public float lineStartX;
+        public float lineStartY;
+        public float lineEndX;
+        public float lineEndY;
 
         public AttractorData(IAttractor attractor)
         {
@@ -38,13 +55,39 @@ namespace Ricercar.Gravity
             y = pos.y;
             ignore = attractor.AffectsField ? 0 : 1;
             mass = attractor.Mass;
-            radius = attractor.Radius;
-            surfaceGravityForce = attractor.SurfaceGravityForce;
+
+            if (!(attractor is ISimpleAttractor simple))
+            {
+                radius = 0f;
+                surfaceGravityForce = 1f;
+            }
+            else
+            {
+                radius = simple.Radius;
+                surfaceGravityForce = simple.SurfaceGravityForce;
+            }
+
+            if (!(attractor is ILineAttractor line))
+            {
+                isLine = 0;
+                lineStartX = 0f;
+                lineStartY = 0f;
+                lineEndX = 1f;
+                lineEndY = 1f;
+            }
+            else
+            {
+                isLine = 1;
+                lineStartX = line.Start.x;
+                lineStartY = line.Start.y;
+                lineEndX = line.End.x;
+                lineEndY = line.End.y;
+            }
         }
 
         public override string ToString()
         {
-            return $"x:\t{x}\ny:\t{y}\nignore:\t{ignore}\nmass:\t{mass}\nradius:\t{radius}\nsurfaceGravityForce:\t{surfaceGravityForce}";
+            return $"x:\t{x}\ny:\t{y}\nignore:\t{ignore}\nmass:\t{mass}\nradius:\t{radius}\nsurfaceGravityForce:\t{surfaceGravityForce}\nisLine:\t{isLine}\nlineStartX:\t{lineStartX}\nlineStartY:\t{lineStartY}\nlineEndX:\t{lineEndX}\nlineEndY:\t{lineEndY}";
         }
     }
 
@@ -130,12 +173,6 @@ namespace Ricercar.Gravity
             }    
 
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
-        }
-
-        [Button("Print GPU Data")]
-        public void PrintGPUData()
-        {
-            Debug.Log(new AttractorData(this));
         }
 
         //        /// <summary>

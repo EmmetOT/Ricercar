@@ -5,8 +5,34 @@ using NaughtyAttributes;
 
 namespace Ricercar.Gravity
 {
-    public class LineAttractor : Attractor
+    public class LineAttractor : MonoBehaviour, ILineAttractor
     {
+        [SerializeField]
+        protected GravityField m_gravityField;
+
+        [SerializeField]
+        private bool m_applyForceToSelf = true;
+        public bool ApplyForceToSelf => m_applyForceToSelf;
+
+        [SerializeField]
+        private bool m_affectsField = true;
+        public bool AffectsField => m_affectsField;
+
+        [SerializeField]
+        private Rigidbody2D m_rigidbody;
+        public Rigidbody2D Rigidbody => m_rigidbody;
+
+        [SerializeField]
+        private bool m_useRigidbodyMass;
+
+        [SerializeField]
+        [HideIf("m_useRigidbodyMass")]
+        private float m_mass;
+
+        [SerializeField]
+        [HideInInspector]
+        private Transform m_transform;
+
         [SerializeField]
         [BoxGroup("Line")]
         private Transform m_startPoint;
@@ -15,40 +41,68 @@ namespace Ricercar.Gravity
         [BoxGroup("Line")]
         private Transform m_endPoint;
 
-        [BoxGroup("Line")]
+        public Vector2 Start => m_startPoint.position;
+        public Vector2 End => m_endPoint.position;
+        public Vector2 Position => m_transform.position;
+        public Vector2 Velocity => m_rigidbody.velocity;
+        public float Mass => m_useRigidbodyMass ? m_rigidbody.mass : m_mass;
+
         [SerializeField]
-        [MinValue(0f)]
-        private float m_deadZoneMagnitude = 0.1f;
+        [ReadOnly]
+        private Vector2 m_currentGravity;
+        public Vector2 CurrentGravity => m_currentGravity;
 
-        [BoxGroup("Line")]
-        [SerializeField]
-        [MinValue(0f)]
-        private float m_deadZoneSteepness = 1000f;
+        public void SetGravity(Vector2 gravity)
+        {
+            if (!m_applyForceToSelf)
+                return;
 
-//#if UNITY_EDITOR
-//        protected override void OnDrawGizmos()
-//        {
-//            base.OnDrawGizmos();
+            m_currentGravity = gravity;
+            m_rigidbody.AddForce(m_currentGravity);
+        }
 
-//            if (m_startPoint == null || m_endPoint == null)
-//                return;
+        private void Reset()
+        {
+            m_rigidbody = GetComponent<Rigidbody2D>();
+            m_transform = transform;
+        }
 
-//            Gizmos.color = Color.white;
-//            Gizmos.DrawLine(m_startPoint.position, m_endPoint.position);
-//        }
-//#endif
+        private void Awake()
+        {
+            m_transform = transform;
+        }
 
-//        protected override Vector2 GetGravityVector(Vector2 from, out Vector2 sourcePos)
-//        {
-//            sourcePos = Utils.ProjectPointOnLineSegment(m_startPoint.position, m_endPoint.position, from);
-//            Vector2 result = sourcePos - from;
+        public void OnEnable()
+        {
+            m_gravityField.RegisterAttractor(this);
+        }
 
-//            float deadzoneDist = result.magnitude - m_deadZoneMagnitude;
+        public void OnDisable()
+        {
+            m_gravityField.DeregisterAttractor(this);
+        }
 
-//            if (deadzoneDist <= 0f)
-//                return Vector2.Lerp(result, result.normalized * m_deadZoneSteepness, Mathf.InverseLerp(0f, -m_deadZoneMagnitude, deadzoneDist));
+        [Button("Print GPU Data")]
+        public void PrintGPUData()
+        {
+            Debug.Log(new AttractorData(this));
+        }
 
-//            return result;
-//        }
+
+#if UNITY_EDITOR
+        protected virtual void OnDrawGizmos()
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawSphere(m_startPoint.position, 0.2f);
+
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(m_endPoint.position, 0.2f);
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawSphere(m_transform.position, 0.1f);
+
+            Gizmos.DrawLine(m_startPoint.position, m_endPoint.position);
+        }
+#endif
     }
 }

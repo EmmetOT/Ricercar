@@ -24,7 +24,7 @@ namespace Ricercar
         
         protected override bool CanAim => base.CanAim && !IsSecondaryFireHeld;
 
-        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, Attractor attractor, ObiCollider2D parentCollider)
+        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, IAttractor attractor, ObiCollider2D parentCollider)
         {
             base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, attractor, parentCollider);
             
@@ -59,7 +59,7 @@ namespace Ricercar
             for (int i = 0; i < m_guns.Count; i++)
                 sumForce += m_guns[i].Fire();
 
-            m_attractor.Rigidbody.AddForce(-sumForce);
+            //m_attractor.Rigidbody.AddForce(-sumForce);
         }
 
         public override void SecondaryFire()

@@ -128,7 +128,7 @@ namespace Ricercar.Gravity
         /// </summary>
         public ComputeBuffer ForceGeneratePointInputBuffer()
         {
-            m_attractors = new List<IAttractor>(FindObjectsOfType<PointAttractor>());
+            m_attractors = new List<IAttractor>(FindObjectsOfType<SimpleRigidbodyAttractor>());
             m_attractors.AddRange(FindObjectsOfType<NonRigidbodyAttractor>());
 
             m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel(m_parallelMode ? "ComputePointForcesParallel" : "ComputePointForcesSeries");

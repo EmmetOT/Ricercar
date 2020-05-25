@@ -22,11 +22,11 @@ namespace Ricercar
         [MinValue(0f)]
         private float m_defaultForce;
 
-        private Attractor m_sourceAttractor;
+        private IAttractor m_sourceAttractor;
         private Transform m_transform;
         private float m_distanceFromCentre;
 
-        public void Initialize(Attractor attractor, float distanceFromCentre)
+        public void Initialize(IAttractor attractor, float distanceFromCentre)
         {
             if (m_projectilePool == null)
                 m_projectilePool = new Pool<Projectile>(m_projectilePrefab);

@@ -14,6 +14,12 @@ struct AttractorData
     float mass;
     float radius;
     float surfaceGravityForce;
+
+    int isLine;
+    float lineStartX;
+    float lineStartY;
+    float lineEndX;
+    float lineEndY;
 };
 
 struct AtomicVector2
@@ -90,6 +96,30 @@ int not(int a)
   return 1 - a;
 }
 
+float2 ProjectPointOnLineSegment(float2 a, float2 b, float2 p)
+{
+    float2 diff = b - a;
+    float diffMagnitude = length(diff);
+    float2 lineDirection = diff / diffMagnitude;
+
+    //get vector from point on line to point in space
+    float2 linePointToLineDirection = p - a;
+
+    // how far along the point is from a to b
+    float t = dot(linePointToLineDirection, lineDirection);
+
+    float2 projectedPoint = a + lineDirection * t;
+
+    float2 pointVec = projectedPoint - a;
+
+    float dotProduct = dot(pointVec, diff);
+
+    float dotGreaterThanZero = when_gt(dotProduct, 0);
+    float pointVecShorterThanDiff = when_le(length(pointVec), diffMagnitude);
+
+    return lerp(a, lerp(b, projectedPoint, pointVecShorterThanDiff), dotGreaterThanZero);
+}
+
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
@@ -105,6 +135,11 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         int doNotCount = otherPoint.ignore;
 
         float2 pointPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
+        float2 lineStartPos = float2(otherPoint.lineStartX + doNotCount, otherPoint.lineStartY + doNotCount);
+        float2 lineEndPos = float2(otherPoint.lineEndX + doNotCount, otherPoint.lineEndY + doNotCount);
+
+        pointPosition = lerp(pointPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), otherPoint.isLine);
+
         float mass = otherPoint.mass;
 
         float2 difference = pointPosition - position;
@@ -116,10 +151,13 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         float forceMagnitude = G * mass / sqrMagnitude;
 
-        float shellGravity = lerp(0, otherPoint.surfaceGravityForce, magnitude / max(otherPoint.radius, 0.0001));
-        int insideShell = when_lt(magnitude, otherPoint.radius);
+        if (otherPoint.isLine != 1)
+        {
+            float shellGravity = lerp(0, otherPoint.surfaceGravityForce, magnitude / max(otherPoint.radius, 0.0001));
+            int insideShell = when_lt(magnitude, otherPoint.radius);
 
-        forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
+            forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
+		}
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
 	}
@@ -189,6 +227,13 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
         // adding the value here to prevent a division by 0. it doesn't matter, this calculation
         // will be discarded anyway
         float2 otherPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
+
+        // calculate for lines
+        float2 lineStartPos = float2(otherPoint.lineStartX + doNotCount, otherPoint.lineStartY + doNotCount);
+        float2 lineEndPos = float2(otherPoint.lineEndX + doNotCount, otherPoint.lineEndY + doNotCount);
+
+        otherPosition = lerp(otherPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), otherPoint.isLine);
+
         float otherMass = otherPoint.mass;
 
         float2 difference = otherPosition - position;

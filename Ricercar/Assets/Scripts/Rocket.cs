@@ -36,7 +36,7 @@ namespace Ricercar
         [MinValue(0f)]
         private float m_maxForce = 800f;
 
-        private Attractor m_sourceAttractor;
+        private IAttractor m_sourceAttractor;
         private Transform m_transform;
         private float m_distanceFromCentre;
 
@@ -47,7 +47,7 @@ namespace Ricercar
             return m_transform.position + m_transform.up * m_distanceFromCentre;
         }
 
-        public void Initialize(Attractor attractor, float distanceFromCentre)
+        public void Initialize(IAttractor attractor, float distanceFromCentre)
         {
             Reset();
 
@@ -97,7 +97,7 @@ namespace Ricercar
 
         public void Fire(float force)
         {
-            m_sourceAttractor.Rigidbody.AddForceAtPosition(m_transform.up * -force, GetSourcePosition(), ForceMode2D.Force);
+            //m_sourceAttractor.Rigidbody.AddForceAtPosition(m_transform.up * -force, GetSourcePosition(), ForceMode2D.Force);
 
             m_jetSpriteRenderer.enabled = true;
             m_showJetFlag = true;
