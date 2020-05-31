@@ -67,6 +67,29 @@ namespace Ricercar.Gravity
             GL.End();
             GL.PopMatrix();
 
+            EditorGUILayout.PropertyField(m_centreOfGravity);
+
+            if (GUILayout.Button("Print Tex Data (Slow)"))
+            {
+                Texture2D texture2d = m_texture.objectReferenceValue as Texture2D;
+
+                if (texture2d != null)
+                {
+                    Color[] cols = texture2d.GetPixels();
+
+                    Debug.Log("Size = " + cols.Length);
+
+                    for (int i = 0; i < cols.Length; i++)
+                    {
+                        Debug.Log(cols[i]);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Texture was null!");
+                }
+            }
+
             serializedObject.ApplyModifiedProperties();
         }
 

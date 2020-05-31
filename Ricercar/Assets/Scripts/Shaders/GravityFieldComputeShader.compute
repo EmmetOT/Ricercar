@@ -47,13 +47,6 @@ struct BakedAttractorData
     float rotation;
 };
 
-// the resulting 2d array of gravity vectors,
-// the z component represents the average "towardsiness" 
-// of each point, i.e. a high negative value means
-// the vector is moving away from other points, a high positive
-// value means it's moving towards those points
-RWStructuredBuffer<float3> GravityField;
-
 // 2d positions where z corresponds to mass of the point
 StructuredBuffer<AttractorData> PointAttractors;
 int PointCount;
@@ -67,6 +60,11 @@ Texture2DArray<float4> BakedAttractorTextures;
 
 RWStructuredBuffer<float2> PointForces;
 
+// the resulting 2d array of gravity vectors,
+// the z component represents the average "towardsiness" 
+// of each point, i.e. a high negative value means
+// the vector is moving away from other points, a high positive
+// value means it's moving towards those points
 RWTexture2D<float4> GravityFieldOutputTexture;
 
 float4 BottomLeft;
@@ -294,7 +292,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         float4 texData = BakedAttractorTextures[float3(coord, k)];
         
         // values have to be scaled back to their true forms!
-        //float2 gravityForce = float2(lerp(-MAX_ABS_VAL, MAX_ABS_VAL, texData.x), lerp(-MAX_ABS_VAL, MAX_ABS_VAL, texData.y)) * data.mass;
+        //float2 gravityForce = float2(texData.x * 2 - MAX_ABS_VAL, texData.y * 2 - MAX_ABS_VAL) * data.mass;
         float2 gravityForce = texData * data.mass;
 
         // rotate force vectors by rotation of attractor
@@ -313,12 +311,12 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         float2 direction = difference / magnitude;
 
-        float forceMagnitude = 0.02 * G * data.mass / sqrMagnitude;
+        float forceMagnitude = 0.0181 * G * data.mass / sqrMagnitude;
 
         float2 pointForce = (1 - doNotCount) * (direction * forceMagnitude);
         
         // this determines whether we're inside or outside the baked texture
-        float isOutsideBounds = or(or(when_lt(coord.x, 0), when_lt(coord.y, 0)), or(when_gt(coord.x, FULL_BAKED_SIZE), when_gt(coord.y, FULL_BAKED_SIZE)));
+        float isOutsideBounds = or(or(when_le(coord.x, 0), when_le(coord.y, 0)), or(when_ge(coord.x, FULL_BAKED_SIZE), when_ge(coord.y, FULL_BAKED_SIZE)));
 
         result += float3(lerp(bakedForce, pointForce, isOutsideBounds), 0);
 	}
@@ -326,7 +324,6 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     result.z /= validAttractors;
     
     GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
-    GravityField[id.x + THREAD_GROUP_SIZE * id.y] = result;
 }
 
 [numthreads(1, 1, 1)]

@@ -11,6 +11,8 @@ namespace Ricercar.Gravity
 
         //private const float MIN_MOVEMENT_SQR_MAGNITUDE = 0.1f;
 
+        public const UnityEngine.Experimental.Rendering.GraphicsFormat GRAPHICS_FORMAT = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat;
+
         private List<IAttractor> m_attractors = new List<IAttractor>();
         private List<IRingAttractor> m_ringAttractors = new List<IRingAttractor>();
         private List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
@@ -155,8 +157,7 @@ namespace Ricercar.Gravity
                 m_bakedAttractorTextureList.Clear();
 
                 m_bakedAttractorTextureArray = new
-                    Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, m_bakedAttractorCount,
-                    TextureFormat.RGBA32, true, false)
+                    Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, m_bakedAttractorCount, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
                 {
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp
@@ -172,9 +173,8 @@ namespace Ricercar.Gravity
             }
             else
             {
-                m_bakedAttractorTextureArray = new
-                    Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, 1,
-                    TextureFormat.RGBA32, true, false)
+                // exists solely to stop a complaint if we pass an empty one in. todo: cache this
+                m_bakedAttractorTextureArray = new Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, 1, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
                 {
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp

@@ -8,7 +8,7 @@ namespace Ricercar.Gravity
 {
     public class GravityRasterizer : EditorWindow
     {
-        private const int MAX_INPUT_SIZE = 300;
+        private const int MAX_INPUT_SIZE = 256;
 
         private const string COMPUTE_SHADER_PATH = "GravityRasterizerShader";
 
@@ -38,6 +38,8 @@ namespace Ricercar.Gravity
         [MenuItem("Tools/Gravity Rasterizer")]
         public static void ShowWindow()
         {
+            m_outputBuffer?.Release();
+
             m_centreOfGravity = default;
             m_computeShader = Resources.Load<ComputeShader>(COMPUTE_SHADER_PATH);
 
@@ -74,7 +76,7 @@ namespace Ricercar.Gravity
                     }
                 }
 
-                RenderTexture renderTexture = GravityField.CreateTempRenderTexture(GravityMap.SIZE, GravityMap.SIZE, Color.black, UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16_SFloat);
+                RenderTexture renderTexture = GravityField.CreateTempRenderTexture(GravityMap.SIZE, GravityMap.SIZE, Color.black, GravityField.GRAPHICS_FORMAT);
                 GenerateGravityTexture(m_inputTexture, renderTexture, out m_centreOfGravity);
 
                 m_outputFinal = renderTexture.ToTexture2D();

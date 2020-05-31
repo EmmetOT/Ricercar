@@ -17,7 +17,6 @@ namespace Ricercar.Gravity
         public Texture2D Texture => m_texture;
 
         [SerializeField]
-        [ReadOnly]
         private Vector2 m_centreOfGravity;
         public Vector2 CentreOfGravity => m_centreOfGravity;
 
@@ -38,7 +37,6 @@ namespace Ricercar.Gravity
             Debug.Log("Saving texture with graphics format: " + map.m_texture.graphicsFormat);
 
             EditorUtility.SetDirty(map);
-
             return map;
         }
     }

@@ -49,7 +49,6 @@ namespace Ricercar.Gravity
         [SerializeField]
         private ComputeShader m_gravityFieldComputeShader;
 
-        private ComputeBuffer m_fieldOutputBuffer;
         private int m_computeFullFieldKernel = -1;
 
         [SerializeField]
@@ -110,18 +109,14 @@ namespace Ricercar.Gravity
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
 
-            m_renderTexture = GravityField.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution);
+            m_renderTexture = GravityField.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
 
             m_gravityFieldComputeShader.SetTexture(m_computeFullFieldKernel, "GravityFieldOutputTexture", m_renderTexture);
-
-            // 256 x 256
-            m_fieldOutputBuffer = new ComputeBuffer((int)m_gravitySampleResolution * (int)m_gravitySampleResolution, sizeof(float) * 3);
 
             m_materialInstance = new Material(m_material);
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
             m_materialInstance.SetInt(FIELD_SIZE_PROPERTY, (int)m_gravitySampleResolution);
-            m_materialInstance.SetBuffer(POINT_ARRAY_PROPERTY, m_fieldOutputBuffer);
 
             if (m_colourMode == ColourMode.Distortion)
                 m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
@@ -134,11 +129,6 @@ namespace Ricercar.Gravity
             m_transform.hasChanged = false;
         }
 
-        private void ReleaseBuffers()
-        {
-            m_fieldOutputBuffer?.Release();
-        }
-
         private void OnEnable()
         {
             Initialize();
@@ -148,7 +138,6 @@ namespace Ricercar.Gravity
         private void OnDisable()
         {
             m_gravityField.DeregisterVisualizer(this);
-            ReleaseBuffers();
             Destroy(m_materialInstance);
             m_renderTexture.Release();
         }
@@ -179,25 +168,11 @@ namespace Ricercar.Gravity
 
             // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
 
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "GravityField", m_fieldOutputBuffer);
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
 
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
-        }
-
-        [Button("Test Field Data")]
-        private void TestFieldData()
-        {
-            Vector3[] data = new Vector3[100]; // 100 is a totally arbitrary choice
-
-            m_fieldOutputBuffer.GetData(data);
-
-            for (int i = 0; i < data.Length; i++)
-            {
-                Debug.Log(i + ") " + data[i].ToString("F4"));
-            }
         }
 
 //        [Button]

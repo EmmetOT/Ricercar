@@ -78,6 +78,15 @@ namespace Ricercar.Gravity
         {
             m_gravityField.DeregisterAttractor(this);
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            m_transform = transform;
+            Gizmos.color = Color.white;
+            Gizmos.DrawSphere(Position + m_gravityMap.CentreOfGravity, 0.4f);
+        }
+#endif
     }
 
     public interface IBakedAttractor : IAttractor
