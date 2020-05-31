@@ -3,6 +3,7 @@
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
+		_GravityFieldOutputTexture("Texture", 2D) = "white" {}
 		
 		_FieldSize("Field Size", int) = 0
 		_ColourScale("Colour Scale", float) = 1
@@ -44,6 +45,8 @@
 			float4 _MainTex_ST;
 
 			uniform StructuredBuffer<float3> _Points;
+
+			sampler2D _GravityFieldOutputTexture;
 
 			uniform int _FieldSize;
 			uniform float _ColourScale;
@@ -119,7 +122,9 @@
 
 			fixed4 frag(v2f i) : SV_Target
 			{
-				float4 gravityData = sampleGravity(i.uv.x, i.uv.y);
+				//return tex2D(_GravityFieldOutputTexture, i.uv);
+
+				float4 gravityData = tex2D(_GravityFieldOutputTexture, i.uv);//sampleGravity(i.uv.x, i.uv.y);
 				float2 gravity = float2(gravityData.x, gravityData.y);
 				float towardsiness = gravityData.z;
 
@@ -133,12 +138,15 @@
 				float negativeTowardsiness = -min(0, towardsiness) * _ColourScale;
 
 				float4 sampleCol = tex2D(_MainTex, distortedUVs);
+
 				float4 tint = lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), positiveTowardsiness);
 				tint = lerp(tint, float4(1, 0, 0, 1), negativeTowardsiness);
 
 				return sampleCol * tint;
 
 			#else
+
+				return gravityData;
 
 				float left;
 				float right;

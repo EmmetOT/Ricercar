@@ -1,0 +1,92 @@
+﻿#pragma kernel CalculateMassDistribution
+#pragma kernel GenerateGravityMap
+
+#define G 667.4
+#define SIZE 256
+#define MULTIPLICATION_FACTOR 10000.0
+#define MAX_ABS_VAL 1.0
+
+Texture2D<float4> ImageInput;
+RWTexture2D<float4> GravityMapOutput;
+
+RWStructuredBuffer<int> MassDistributionOutput;
+
+float TestMassDistribution2;
+
+uint InputWidth;
+uint InputHeight;
+int TextureOutputOffset;
+
+float invLerp(float from, float to, float value) 
+{
+	return clamp((value - from) / (to - from), from, to);
+}
+			
+[numthreads(1, 1, 1)]
+void CalculateMassDistribution(uint3 id : SV_DispatchThreadID)
+{
+    // just count up all the "mass" in the image (the sum of all the alpha values)
+
+    float4 texel = ImageInput[id.xy];
+    
+    InterlockedAdd(MassDistributionOutput[0], (int)(texel.a * MULTIPLICATION_FACTOR));
+}
+
+[numthreads(32, 32, 1)]
+void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
+{
+    float massDistribution = (float)MassDistributionOutput[0] / MULTIPLICATION_FACTOR;
+
+    float2 position = id.xy;
+
+    float3 totalGravityForce = float3(0, 0, 0);
+
+    // iterate over a fixed size of 256*256, this makes sure the gravity effect
+    // extends past the bounds of the input image
+    for (uint x = 0; x < SIZE; x++)
+    {
+        for (uint y = 0; y < SIZE; y++)
+        {
+            float2 sampleCoords = float2(x, y) - float2(TextureOutputOffset, TextureOutputOffset);
+
+            if ((id.x != x || id.y != y) && x > TextureOutputOffset && y > TextureOutputOffset)
+            {
+                float4 texel = ImageInput[sampleCoords];
+
+                float mass = texel.a / massDistribution;
+
+                float2 texelPosition = float2(x, y);
+
+                float2 difference = texelPosition - position;
+                float2 direction = normalize(difference);
+                float sqrMagnitude = dot(difference, difference);
+
+                float forceMagnitude = G * mass / sqrMagnitude;
+                float2 gravityForce = (direction * forceMagnitude);
+
+                float towardsiness = dot(normalize(gravityForce), direction) * forceMagnitude;
+        
+                // not entirely sure whether this counts as branching,
+                // i need a way to convert a nan to a zero.
+                // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
+                towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+
+                totalGravityForce += float3(gravityForce, towardsiness);
+
+			}
+		}
+	}
+    
+    float2 centreOfMassContribution = position * ImageInput[id.xy].a / massDistribution;
+    float totalTowardsiness = totalGravityForce.z;
+
+    InterlockedAdd(MassDistributionOutput[1], (int)(centreOfMassContribution.x * MULTIPLICATION_FACTOR));
+    InterlockedAdd(MassDistributionOutput[2], (int)(centreOfMassContribution.y * MULTIPLICATION_FACTOR));
+
+    // rescale the values to support a range of negative numbers
+    float finalX = invLerp(-MAX_ABS_VAL, MAX_ABS_VAL, totalGravityForce.x);
+    float finalY = invLerp(-MAX_ABS_VAL, MAX_ABS_VAL, totalGravityForce.y);
+    float finalZ = invLerp(-MAX_ABS_VAL, MAX_ABS_VAL, totalTowardsiness);
+
+    GravityMapOutput[position] = float4(finalX, finalY, finalZ, 1);
+}

@@ -9,6 +9,7 @@ using System;
 using System.Text;
 using System.Linq;
 using System.Reflection;
+using System.IO;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -55,6 +56,59 @@ namespace Ricercar
 
         #region Unity Extensions
 
+        /// <summary>
+        //	This makes it easy to create, name and place unique new ScriptableObject asset files.
+        /// </summary>
+        public static T CreateAsset<T>(string name = null) where T : ScriptableObject
+        {
+            T asset = ScriptableObject.CreateInstance<T>();
+
+            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
+            if (path == "")
+            {
+                path = "Assets";
+            }
+            else if (Path.GetExtension(path) != "")
+            {
+                path = path.Replace(Path.GetFileName(AssetDatabase.GetAssetPath(Selection.activeObject)), "");
+            }
+
+            name = "/" + (name ?? "New_" + typeof(T).ToString());
+
+            string assetPathAndName = AssetDatabase.GenerateUniqueAssetPath(path + name + ".asset");
+
+            AssetDatabase.CreateAsset(asset, assetPathAndName);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            EditorUtility.FocusProjectWindow();
+            Selection.activeObject = asset;
+
+            return asset;
+        }
+
+        public static void SaveTexture(Texture2D texture, string name = null)
+        {
+            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
+            if (path == "")
+            {
+                path = "Assets";
+            }
+            else if (Path.GetExtension(path) != "")
+            {
+                path = path.Replace(Path.GetFileName(AssetDatabase.GetAssetPath(Selection.activeObject)), "");
+            }
+
+            name = "/" + (name ?? "New_" + typeof(Texture2D).ToString());
+
+            string assetPathAndName = AssetDatabase.GenerateUniqueAssetPath(path + name + ".asset");
+
+            AssetDatabase.CreateAsset(texture, assetPathAndName);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
+
         public static T GetOrAddComponent<T>(this GameObject gO) where T : Component
         {
             T component = gO.GetComponent<T>();
@@ -76,6 +130,44 @@ namespace Ricercar
             transform.localScale = Vector3.one;
         }
 
+        /// <summary>
+        /// Create a Texture2D from the given rendertexture.
+        /// </summary>
+        public static Texture2D ToTexture2D(this RenderTexture renderTexture, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
+        {
+            return renderTexture.ToTexture2D(renderTexture.width, renderTexture.height, format);
+        }
+
+        /// <summary>
+        /// Create a Texture2D from the given rendertexture with the given width and height.
+        /// </summary>
+        public static Texture2D ToTexture2D(this RenderTexture renderTexture, int width, int height, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
+        {
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = renderTexture;
+
+            Texture2D tex = new Texture2D(width, height, format ?? renderTexture.graphicsFormat, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat
+            };
+
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+            tex.Apply();
+
+            RenderTexture.active = active;
+
+            return tex;
+        }
+
+        public static void FillWithColour(this RenderTexture renderTexture, Color colour)
+        {
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = renderTexture;
+            GL.Clear(true, true, colour);
+            RenderTexture.active = active;
+        }
+
         #endregion
 
         #region Vectors
@@ -87,6 +179,15 @@ namespace Ricercar
         public static Vector3 RotateAround(Vector3 point, Vector3 centre, Vector3 eulerAngle)
         {
             return (Quaternion.Euler(eulerAngle) * (point - centre)) + centre;
+        }
+
+        /// <summary>
+        /// Given a point and a centre of rotation, rotate the (0, 1, 0) around the origin by the given
+        /// euler angle.
+        /// </summary>
+        public static Vector3 RotateAround(Vector3 eulerAngle)
+        {
+            return Quaternion.Euler(eulerAngle) * Vector3.up;
         }
 
         /// <summary>
@@ -685,7 +786,7 @@ namespace Ricercar
 
             float planarFactor = Vector3.Dot(lineVec3, crossVec1and2);
 
-            //is coplanar, and not parrallel
+            //is coplanar, and not parallel
             if (Mathf.Abs(planarFactor) < 0.0001f && crossVec1and2.sqrMagnitude > 0.00000001f)
             //if (Mathf.Abs(planarFactor) < 0.0001f && crossVec1and2.sqrMagnitude > float.Epsilon)
             {

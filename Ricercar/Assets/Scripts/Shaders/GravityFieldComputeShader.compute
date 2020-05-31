@@ -1,10 +1,14 @@
 ﻿#pragma kernel ComputeFullField
-#pragma kernel ComputePointForcesParallel
+//#pragma kernel ComputePointForcesParallel
 #pragma kernel ComputePointForcesSeries
 
 #define G 667.4
 #define THREAD_GROUP_SQRT 16
 #define THREAD_GROUP_SIZE 256
+#define HALF_BAKED_SIZE 128
+#define FULL_BAKED_SIZE 256
+#define DEGREES_TO_RADIANS 0.0174533
+#define MAX_ABS_VAL 1.0
 
 struct AttractorData
 {
@@ -22,10 +26,25 @@ struct AttractorData
     float lineEndY;
 };
 
-struct AtomicVector2
+struct RingAttractorData
 {
-    int X;
-    int Y;
+    float2 position;
+    int ignore;
+    float mass;
+    float radius;
+    float startAngle;
+    float endAngle;
+    float2 startPosition;
+    float2 endPosition;
+};
+
+struct BakedAttractorData
+{
+    float2 position;
+    int ignore;
+    float mass;
+    float2 centreOfGravity;
+    float rotation;
 };
 
 // the resulting 2d array of gravity vectors,
@@ -37,11 +56,18 @@ RWStructuredBuffer<float3> GravityField;
 
 // 2d positions where z corresponds to mass of the point
 StructuredBuffer<AttractorData> PointAttractors;
+int PointCount;
+
+StructuredBuffer<RingAttractorData> RingAttractors;
+int RingCount;
+
+StructuredBuffer<BakedAttractorData> BakedAttractors;
+int BakedCount;
+Texture2DArray<float4> BakedAttractorTextures;
+
 RWStructuredBuffer<float2> PointForces;
 
-RWStructuredBuffer<AtomicVector2> AtomicForcesOutputBuffer;
-
-int PointCount;
+RWTexture2D<float4> GravityFieldOutputTexture;
 
 float4 BottomLeft;
 float4 TopRight;
@@ -124,12 +150,38 @@ float2 ProjectPointOnLineSegment(float2 a, float2 b, float2 p)
     return lerp(a, lerp(b, projectedPoint, pointVecShorterThanDiff), dotGreaterThanZero);
 }
 
+bool Intersect(float one, float two, float three)
+{
+	return (two > three && (one >= two || one <= three)) || (one >= two && one <= three);
+}
+
+bool IsInArc(RingAttractorData data, float2 pos)
+{
+	return Intersect(atan2(pos.x - 0.5, pos.y - 0.5) * 57.295779, data.startAngle, data.endAngle);
+}
+
+float invLerp(float from, float to, float value) 
+{
+	return (value - from) / (to - from);
+}
+
+float2 rotate(float2 uv, float2 pivot, float rotation)
+{
+    float cosRot = cos(rotation);
+    float sinRot = sin(rotation);
+    float2x2 rotationMatrix = { cosRot, -sinRot, sinRot, cosRot };
+
+    uv -= pivot;
+    uv = mul(rotationMatrix, uv);
+    uv += pivot;
+    return uv;
+}
+			
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
-    float2 position = float2(id.x, id.y);
-
-    position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (THREAD_GROUP_SIZE - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (THREAD_GROUP_SIZE - 1.0)));
+    float2 uv = id.xy;
+    float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (THREAD_GROUP_SIZE - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (THREAD_GROUP_SIZE - 1.0)));
 
     float3 result = float3(0, 0, 0);
     
@@ -137,30 +189,30 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
     for (int i = 0; i < PointCount; i++)
     {
-        AttractorData otherPoint = PointAttractors[i];
-        int doNotCount = otherPoint.ignore;
+        AttractorData data = PointAttractors[i];
+        int doNotCount = data.ignore;
 
-        float2 pointPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
-        float2 lineStartPos = float2(otherPoint.lineStartX + doNotCount, otherPoint.lineStartY + doNotCount);
-        float2 lineEndPos = float2(otherPoint.lineEndX + doNotCount, otherPoint.lineEndY + doNotCount);
+        float2 pointPosition = float2(data.x + doNotCount, data.y + doNotCount);
+        float2 lineStartPos = float2(data.lineStartX + doNotCount, data.lineStartY + doNotCount);
+        float2 lineEndPos = float2(data.lineEndX + doNotCount, data.lineEndY + doNotCount);
 
-        pointPosition = lerp(pointPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), otherPoint.isLine);
+        pointPosition = lerp(pointPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), data.isLine);
 
-        float mass = otherPoint.mass;
+        float mass = data.mass;
 
         float2 difference = pointPosition - position;
 
-        float sqrMagnitude = difference.x * difference.x + difference.y * difference.y;
+        float sqrMagnitude = dot(difference, difference);
         float magnitude = sqrt(sqrMagnitude);
 
         float2 direction = difference / magnitude;
 
         float forceMagnitude = G * mass / sqrMagnitude;
 
-        if (otherPoint.isLine != 1)
+        if (data.isLine != 1)
         {
-            float shellGravity = lerp(0, otherPoint.surfaceGravityForce, magnitude / max(otherPoint.radius, 0.0001));
-            int insideShell = when_lt(magnitude, otherPoint.radius);
+            float shellGravity = lerp(0, data.surfaceGravityForce, magnitude / max(data.radius, 0.0001));
+            int insideShell = when_lt(magnitude, data.radius);
 
             forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
 		}
@@ -180,47 +232,101 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         result += float3(gravityForce.x, gravityForce.y, towardsiness);
 	}
 
+    for (int j = 0; j < RingCount; j++)
+    {
+        RingAttractorData data = RingAttractors[j];
+        int doNotCount = data.ignore;
+
+        float2 direction = normalize(data.position - position);
+        float2 difference;
+
+        if (IsInArc(data, position))
+        {
+            // basic ring function
+            difference = data.position - direction * data.radius - position;
+		}
+        else
+        {
+            float2 diffToStart = data.startPosition - position;
+            float2 diffToEnd = data.endPosition - position;
+
+            //if (length(diffToStart) < length(diffToEnd))
+            //    difference = diffToStart;
+            //else
+                difference = (diffToStart + diffToEnd) * 2;
+		}
+
+        float sqrMagnitude = dot(difference, difference);
+        float magnitude = sqrt(sqrMagnitude);
+
+        direction = difference / magnitude;
+
+        float forceMagnitude = G * data.mass / sqrMagnitude;
+
+        float2 gravityForce = (1 - doNotCount) * (direction * forceMagnitude);
+        float finalMagnitude = length(gravityForce);
+
+        float towardsiness = dot(normalize(gravityForce), direction) * finalMagnitude;
+        
+        validAttractors += 1 - isnan(towardsiness);
+
+        // not entirely sure whether this counts as branching,
+        // i need a way to convert a nan to a zero.
+        // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
+        towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+
+        result += float3(gravityForce.x, gravityForce.y, towardsiness);
+	}
+    
+    float2 bakedOrigin = float2(HALF_BAKED_SIZE, HALF_BAKED_SIZE);
+
+    for (int k = 0; k < BakedCount; k++)
+    {
+        BakedAttractorData data = BakedAttractors[k];
+        int doNotCount = data.ignore;
+
+        float2 dataPos = float2(lerp(HALF_BAKED_SIZE, -HALF_BAKED_SIZE, invLerp(BottomLeft.x, TopRight.x, data.position.x)), 
+                            lerp(HALF_BAKED_SIZE, -HALF_BAKED_SIZE, invLerp(BottomLeft.x, TopRight.x, data.position.y)));
+
+        float2 coord = rotate(uv, bakedOrigin - dataPos, -data.rotation * DEGREES_TO_RADIANS) + dataPos;
+
+        // first, we transform the texture and sample it to get the force "baked in"
+        float4 texData = BakedAttractorTextures[float3(coord, k)];
+        
+        // values have to be scaled back to their true forms!
+        //float2 gravityForce = float2(lerp(-MAX_ABS_VAL, MAX_ABS_VAL, texData.x), lerp(-MAX_ABS_VAL, MAX_ABS_VAL, texData.y)) * data.mass;
+        float2 gravityForce = texData * data.mass;
+
+        // rotate force vectors by rotation of attractor
+        float cosRot = cos(data.rotation * DEGREES_TO_RADIANS);
+        float sinRot = sin(data.rotation * DEGREES_TO_RADIANS);
+        float2x2 rotationMatrix = { cosRot, -sinRot, sinRot, cosRot };
+        
+        float2 bakedForce = mul(rotationMatrix, float2(gravityForce.x, gravityForce.y));
+
+        // next, we calculate point gravity towards the centre of gravity, in case we're outside the texture
+
+        float2 difference = data.position - position;
+
+        float sqrMagnitude = dot(difference, difference);
+        float magnitude = sqrt(sqrMagnitude);
+
+        float2 direction = difference / magnitude;
+
+        float forceMagnitude = 0.02 * G * data.mass / sqrMagnitude;
+
+        float2 pointForce = (1 - doNotCount) * (direction * forceMagnitude);
+        
+        // this determines whether we're inside or outside the baked texture
+        float isOutsideBounds = or(or(when_lt(coord.x, 0), when_lt(coord.y, 0)), or(when_gt(coord.x, FULL_BAKED_SIZE), when_gt(coord.y, FULL_BAKED_SIZE)));
+
+        result += float3(lerp(bakedForce, pointForce, isOutsideBounds), 0);
+	}
+
     result.z /= validAttractors;
-
+    
+    GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
     GravityField[id.x + THREAD_GROUP_SIZE * id.y] = result;
-}
-
-[numthreads(1, 1, 1)]
-void ComputePointForcesParallel(uint3 id : SV_DispatchThreadID)
-{    
-    // this kernel computes the attraction from this point to every other point
-    
-    //int doNotCount = or(currentPoint.ignore, when_eq(i, id.x));
-    int doNotCount = when_eq(id.x, id.y);
-
-    AttractorData pointOne = PointAttractors[id.x];
-    AttractorData pointTwo = PointAttractors[id.y];
-    
-    float2 positionOne = float2(pointOne.x, pointOne.y);
-    float2 positionTwo = float2(pointTwo.x + doNotCount, pointTwo.y + doNotCount);
-
-    float massOne = pointOne.mass;
-    float massTwo = pointTwo.mass;
-
-    float2 difference = positionTwo - positionOne;
-
-    float sqrMagnitude = difference.x * difference.x + difference.y * difference.y;
-    float magnitude = sqrt(sqrMagnitude);
-
-    float2 direction = difference / magnitude;
-
-    float forceMagnitude = (1000 * G * massOne * massTwo) / sqrMagnitude;
-
-    float2 forceVec = (1 - doNotCount) * (direction * forceMagnitude);
-
-    int resultX = (int)forceVec.x;
-    int resultY = (int)forceVec.y;
-    
-    InterlockedAdd(AtomicForcesOutputBuffer[id.x].X, resultX);
-    InterlockedAdd(AtomicForcesOutputBuffer[id.x].Y, resultY);
-
-    InterlockedAdd(AtomicForcesOutputBuffer[id.y].X, -resultX);
-    InterlockedAdd(AtomicForcesOutputBuffer[id.y].Y, -resultY);
 }
 
 [numthreads(1, 1, 1)]
@@ -278,6 +384,40 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
     }
+
+    for (int j = 0; j < RingCount; j++)
+    {
+        RingAttractorData data = RingAttractors[j];
+        int doNotCount = or(data.ignore, when_eq(i, id.x));
+
+        float2 direction = normalize(data.position - position);
+        float2 difference;
+
+        if (IsInArc(data, position))
+        {
+            // basic ring function
+            difference = data.position - direction * data.radius - position;
+		}
+        else
+        {
+            float2 diffToStart = data.startPosition - position;
+            float2 diffToEnd = data.endPosition - position;
+
+            if (length(diffToStart) < length(diffToEnd))
+                difference = diffToStart;
+            else
+                difference = diffToEnd;
+		}
+
+        float sqrMagnitude = difference.x * difference.x + difference.y * difference.y;
+        float magnitude = sqrt(sqrMagnitude);
+
+        direction = difference / magnitude;
+
+        float forceMagnitude = G * data.mass / sqrMagnitude;
+
+        result += (1 - doNotCount) * (direction * forceMagnitude);
+	}
 
     PointForces[id.x] = result;
 }
