@@ -29,60 +29,28 @@ namespace Ricercar.Gravity
         Vector2 End { get; }
     }
 
-    public interface IRingAttractor : IAttractor
-    {
-        float Radius { get; }
-        float StartAngle { get; }
-        float EndAngle { get; }
-        Vector2 StartDirection { get; }
-        Vector2 EndDirection { get; }
-    }
-
-    public struct RingAttractorData
-    {
-        // 11 * 4
-        public const int Stride = 44;
-
-        public Vector2 position;
-        public int ignore;
-        public float mass;
-        public float radius;
-        public float startAngle;
-        public float endAngle;
-        public Vector2 startPosition;
-        public Vector2 endPosition;
-
-        public RingAttractorData(IRingAttractor attractor)
-        {
-            position = attractor.Position;
-            ignore = attractor.AffectsField ? 0 : 1;
-            mass = attractor.Mass;
-            radius = attractor.Radius;
-            startAngle = Utils.ClampToBearing(attractor.StartAngle);
-            endAngle = Utils.ClampToBearing(attractor.EndAngle);
-            startPosition = attractor.Position + attractor.StartDirection * radius;
-            endPosition = attractor.Position + attractor.EndDirection * radius;
-        }
-    }
-
     public struct BakedAttractorData
     {
-        // 7 * 4
-        public const int Stride = 28;
+        // 9 * 4
+        public const int Stride = 36;
 
         public Vector2 position;
         public int ignore;
         public float mass;
         public Vector2 centreOfGravity;
         public float rotation;
+        public float size;
+        public float scale;
 
         public BakedAttractorData(IBakedAttractor attractor)
         {
             position = attractor.Position;
             ignore = attractor.AffectsField ? 0 : 1;
             mass = attractor.Mass;
-            centreOfGravity = attractor.CentreOfGravity;
+            centreOfGravity = attractor.ExtrapolationSource == ExtrapolationSource.CENTRE_OF_GRAVITY ? attractor.CentreOfGravity : attractor.Position;
             rotation = attractor.Rotation;
+            size = attractor.Size;
+            scale = attractor.Scale;
         }
     }
 

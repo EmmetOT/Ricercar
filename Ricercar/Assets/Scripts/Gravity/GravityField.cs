@@ -14,7 +14,6 @@ namespace Ricercar.Gravity
         public const UnityEngine.Experimental.Rendering.GraphicsFormat GRAPHICS_FORMAT = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat;
 
         private List<IAttractor> m_attractors = new List<IAttractor>();
-        private List<IRingAttractor> m_ringAttractors = new List<IRingAttractor>();
         private List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
         private readonly List<GravityVisualizer> m_visualizers = new List<GravityVisualizer>();
 
@@ -27,18 +26,15 @@ namespace Ricercar.Gravity
         private ComputeBuffer m_forcesOutputBuffer;
 
         private readonly List<AttractorData> m_pointInputData = new List<AttractorData>();
-        private readonly List<RingAttractorData> m_ringInputData = new List<RingAttractorData>();
         private readonly List<BakedAttractorData> m_bakedInputData = new List<BakedAttractorData>();
 
         private Texture2DArray m_bakedAttractorTextureArray;
         private readonly List<Texture2D> m_bakedAttractorTextureList = new List<Texture2D>();
 
         private ComputeBuffer m_pointInputBuffer;
-        private ComputeBuffer m_ringInputBuffer;
         private ComputeBuffer m_bakedInputBuffer;
 
         private int m_attractorCount = 0;
-        private int m_ringAttractorCount = 0;
         private int m_bakedAttractorCount = 0;
 
         private void Start()
@@ -56,20 +52,12 @@ namespace Ricercar.Gravity
         {
             m_forcesOutputBuffer?.Release();
             m_pointInputBuffer?.Release();
-            m_ringInputBuffer?.Release();
             m_bakedInputBuffer?.Release();
         }
 
         public void RegisterAttractor(IAttractor attractor)
         {
-            if (attractor is IRingAttractor ringAttractor)
-            {
-                if (m_ringAttractors.Contains(ringAttractor))
-                    return;
-
-                m_ringAttractors.Add(ringAttractor);
-            }
-            else if (attractor is IBakedAttractor bakedAttractor)
+            if (attractor is IBakedAttractor bakedAttractor)
             {
                 if (m_bakedAttractors.Contains(bakedAttractor))
                     return;
@@ -89,19 +77,13 @@ namespace Ricercar.Gravity
 
         public void DeregisterAttractor(IAttractor attractor)
         {
-            if (attractor is IRingAttractor ringAttractor)
-            {
-                if (m_ringAttractors.Remove(ringAttractor))
-                    RefreshComputeBuffers();
-            }
-            else if (attractor is IBakedAttractor bakedAttractor)
+            if (attractor is IBakedAttractor bakedAttractor)
             {
                 if (m_bakedAttractors.Remove(bakedAttractor))
                     RefreshComputeBuffers();
             }
             else
             {
-
                 if (m_attractors.Remove(attractor))
                     RefreshComputeBuffers();
             }
@@ -144,12 +126,11 @@ namespace Ricercar.Gravity
                 return;
 
             m_attractorCount = m_attractors.Count;
-            m_ringAttractorCount = m_ringAttractors.Count;
             m_bakedAttractorCount = m_bakedAttractors.Count;
 
             ReleaseBuffers();
 
-            if (m_attractorCount == 0 && m_ringAttractorCount == 0)
+            if (m_attractorCount == 0 && m_bakedAttractorCount == 0)
                 return;
 
             if (m_bakedAttractorCount > 0)
@@ -182,49 +163,41 @@ namespace Ricercar.Gravity
             }
 
 
-            m_forcesOutputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount + m_ringAttractorCount + m_bakedAttractorCount), sizeof(float) * 2);
+            m_forcesOutputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount + m_bakedAttractorCount), sizeof(float) * 2);
             m_pointInputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount), AttractorData.Stride);
-            m_ringInputBuffer = new ComputeBuffer(Mathf.Max(1, m_ringAttractorCount), RingAttractorData.Stride);
             m_bakedInputBuffer = new ComputeBuffer(Mathf.Max(1, m_bakedAttractorCount), BakedAttractorData.Stride);
 
-            m_attractorOutputData = new Vector2[m_attractorCount + m_ringAttractorCount + m_bakedAttractorCount];
+            m_attractorOutputData = new Vector2[m_attractorCount + m_bakedAttractorCount];
 
             // send the data to the kernel of the compute shader meant for the gravity force between point attractors
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointAttractors", m_pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "RingAttractors", m_ringInputBuffer);
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "BakedAttractors", m_bakedInputBuffer);
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
             m_gravityFieldComputeShader.SetInt("PointCount", m_attractorCount);
-            m_gravityFieldComputeShader.SetInt("RingCount", m_ringAttractorCount);
             m_gravityFieldComputeShader.SetInt("BakedCount", m_bakedAttractorCount);
 
             for (int i = 0; i < m_visualizers.Count; i++)
             {
                 if (m_visualizers[i] != null)
-                    m_visualizers[i].SetInputData(m_pointInputBuffer, m_ringInputBuffer, m_bakedInputBuffer, m_bakedAttractorTextureArray);
+                    m_visualizers[i].SetInputData(m_pointInputBuffer, m_bakedInputBuffer, m_bakedAttractorTextureArray);
             }
         }
 
         private void ComputePointForces()
         {
-            if (m_attractors.IsNullOrEmpty() && m_ringAttractors.IsNullOrEmpty() && m_bakedAttractors.IsNullOrEmpty())
+            if (m_attractors.IsNullOrEmpty() && m_bakedAttractors.IsNullOrEmpty())
                 return;
 
             m_pointInputData.Clear();
-            m_ringInputData.Clear();
             m_bakedInputData.Clear();
 
             for (int i = 0; i < m_attractorCount; i++)
                 m_pointInputData.Add(new AttractorData(m_attractors[i]));
 
-            for (int i = 0; i < m_ringAttractorCount; i++)
-                m_ringInputData.Add(new RingAttractorData(m_ringAttractors[i]));
-
             for (int i = 0; i < m_bakedAttractorCount; i++)
                 m_bakedInputData.Add(new BakedAttractorData(m_bakedAttractors[i]));
 
             m_pointInputBuffer.SetData(m_pointInputData);
-            m_ringInputBuffer.SetData(m_ringInputData);
             m_bakedInputBuffer.SetData(m_bakedInputData);
 
             m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, 1, 1);
@@ -243,19 +216,9 @@ namespace Ricercar.Gravity
                 }
             }
 
-            for (int i = 0; i < m_ringAttractorCount; i++)
-            {
-                Vector2 data = m_attractorOutputData[i + m_attractorCount];
-
-                if (!data.IsNaN())
-                {
-                    m_ringAttractors[i].SetGravity(data);
-                }
-            }
-
             for (int i = 0; i < m_bakedAttractorCount; i++)
             {
-                Vector2 data = m_attractorOutputData[i + m_attractorCount + m_ringAttractorCount];
+                Vector2 data = m_attractorOutputData[i + m_attractorCount];
 
                 if (!data.IsNaN())
                 {

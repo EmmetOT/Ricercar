@@ -124,7 +124,9 @@ namespace Ricercar.Gravity
 
                 if (GUILayout.Button("Save as Asset"))
                 {
-                    GravityMap map = GravityMap.Create(m_outputFinal, m_centreOfGravity, m_inputTexture.name);
+                    Debug.Log("Creating from " + m_inputTexture.name, m_inputTexture);
+                    GravityMap map = GravityMap.Create(m_inputTexture, m_outputFinal, m_centreOfGravity, m_inputTexture.name);
+                    AssetDatabase.SaveAssets();
                     Debug.Log("Saved as " + map.name + "!", map);
                 }
             }

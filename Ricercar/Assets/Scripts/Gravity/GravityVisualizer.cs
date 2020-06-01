@@ -142,7 +142,7 @@ namespace Ricercar.Gravity
             m_renderTexture.Release();
         }
 
-        public void SetInputData(ComputeBuffer pointInputBuffer, ComputeBuffer ringInputBuffer, ComputeBuffer bakedInputBuffer, Texture2DArray bakedTextureInput)
+        public void SetInputData(ComputeBuffer pointInputBuffer, ComputeBuffer bakedInputBuffer, Texture2DArray bakedTextureInput)
         {
             if (m_computeFullFieldKernel == -1)
                 return;
@@ -150,7 +150,6 @@ namespace Ricercar.Gravity
             // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
 
             m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "RingAttractors", ringInputBuffer);
             m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "BakedAttractors", bakedInputBuffer);
             m_gravityFieldComputeShader.SetTexture(m_computeFullFieldKernel, "BakedAttractorTextures", bakedTextureInput);
         }

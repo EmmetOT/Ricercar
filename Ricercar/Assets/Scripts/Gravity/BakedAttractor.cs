@@ -22,6 +22,10 @@ namespace Ricercar.Gravity
         public bool AffectsField => m_affectsField;
 
         [SerializeField]
+        private float m_scale = 1f;
+        public float Scale => m_scale;
+
+        [SerializeField]
         private Vector2 m_startingForce;
 
         [SerializeField]
@@ -34,6 +38,10 @@ namespace Ricercar.Gravity
         [SerializeField]
         [HideIf("m_useRigidbodyMass")]
         private float m_mass;
+
+        [SerializeField]
+        private ExtrapolationSource m_extrapolationSource = ExtrapolationSource.CENTRE_OF_GRAVITY;
+        public ExtrapolationSource ExtrapolationSource => m_extrapolationSource;
 
         [SerializeField]
         [HideInInspector]
@@ -49,8 +57,9 @@ namespace Ricercar.Gravity
         public Vector2 CurrentGravity => m_currentGravity;
 
         public Texture2D Texture => m_gravityMap.Texture;
-        public Vector2 CentreOfGravity => m_gravityMap.CentreOfGravity;
+        public Vector2 CentreOfGravity => Position + m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity);
         public float Rotation => m_transform.eulerAngles.z;
+        public float Size => m_gravityMap.Size;
 
         public void SetGravity(Vector2 gravity)
         {
@@ -62,6 +71,7 @@ namespace Ricercar.Gravity
             if (m_rigidbody != null)
                 m_rigidbody.AddForce(m_currentGravity);
         }
+
         private void Reset()
         {
             m_transform = transform;
@@ -80,13 +90,39 @@ namespace Ricercar.Gravity
         }
 
 #if UNITY_EDITOR
-        private void OnDrawGizmos()
+        private void OnDrawGizmosSelected()
         {
-            m_transform = transform;
+            Vector3 translate = transform.localToWorldMatrix.ExtractTranslation();
+            Quaternion rotation = transform.localToWorldMatrix.ExtractRotation();
+            Matrix4x4 transformMatrix = Matrix4x4.TRS(translate, rotation, Vector3.one * Scale);
+
+            Matrix4x4 matrix = Gizmos.matrix;
+            Gizmos.matrix = transformMatrix;
+
             Gizmos.color = Color.white;
-            Gizmos.DrawSphere(Position + m_gravityMap.CentreOfGravity, 0.4f);
+            Gizmos.DrawLine(m_gravityMap.LocalBottomLeftCorner, m_gravityMap.LocalBottomRightCorner);
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawLine(m_gravityMap.LocalBottomLeftCorner, m_gravityMap.LocalTopLeftCorner);
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawLine(m_gravityMap.LocalTopLeftCorner, m_gravityMap.LocalTopRightCorner);
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawLine(m_gravityMap.LocalTopRightCorner, m_gravityMap.LocalBottomRightCorner);
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawSphere(CentreOfGravity, 5f);
+
+            Gizmos.matrix = matrix;
         }
 #endif
+    }
+
+    public enum ExtrapolationSource
+    {
+        POSITION,
+        CENTRE_OF_GRAVITY
     }
 
     public interface IBakedAttractor : IAttractor
@@ -94,5 +130,8 @@ namespace Ricercar.Gravity
         Texture2D Texture { get; }
         Vector2 CentreOfGravity { get; }
         float Rotation { get; }
+        float Size { get; }
+        float Scale { get; }
+        ExtrapolationSource ExtrapolationSource { get; }
     }
 }
