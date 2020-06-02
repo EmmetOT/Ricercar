@@ -151,7 +151,19 @@ float2 transform(float2 uv, float2 pivot, float rotation, float scale)
     uv += pivot;
     return uv;
 }
-			
+		
+float4 SampleBilinear(Texture2DArray<float4> t, int texIndex, float2 uv)
+{
+    float4 tl = t[float3(uv, texIndex)];
+    float4 tr = t[float3(uv + float2(1, 0), texIndex)];
+    float4 bl = t[float3(uv + float2(0, 1), texIndex)];
+    float4 br = t[float3(uv + float2(1, 1), texIndex)];
+    float2 f = frac(uv);
+    float4 tA = lerp(tl, tr, f.x);
+    float4 tB = lerp(bl, br, f.x);
+    return lerp(tA, tB, f.y);
+}
+	
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
@@ -206,6 +218,10 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         result += float3(gravityForce.x, gravityForce.y, towardsiness);
 	}
+    
+    float2 visualizerPos = (TopRight + BottomLeft) * 0.5;
+    float visualizerSize = (TopRight.x - BottomLeft.x);
+    float normalizedVisualizerSizer = DEFAULT_BAKED_SIZE / visualizerSize;
 
     for (int k = 0; k < BakedCount; k++)
     {
@@ -213,22 +229,20 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         int doNotCount = data.ignore;
         float halfBaked = data.size * 0.5;
 
-        float scale = data.scale;// * (data.size / DEFAULT_BAKED_SIZE);
+        float scale = data.scale;
 
-        float2 dataPos = float2(lerp(halfBaked, -halfBaked, invLerp(BottomLeft.x, TopRight.x, data.position.x)), 
-                            lerp(halfBaked, -halfBaked, invLerp(BottomLeft.x, TopRight.x, data.position.y)));
-
-        float2 coord = transform(uv, float2(halfBaked, halfBaked) - dataPos, -data.rotation * DEGREES_TO_RADIANS, scale) + dataPos;
+        float2 dataPos = visualizerPos - data.position;
+        float2 coord = transform(uv, float2(halfBaked, halfBaked) - dataPos , -data.rotation * DEGREES_TO_RADIANS, normalizedVisualizerSizer * scale) + dataPos;
 
         // first, we transform the texture and sample it to get the force "baked in"
-        float4 texData = BakedAttractorTextures[float3(coord, k)];
+        float4 texData = SampleBilinear(BakedAttractorTextures, k, coord);
         
         // mass has to be divided by square of scale to stay constant
         // - doubling the size of an object will quarter its density (in 2 dimensions)
         float scaledMass = data.mass / (scale * scale);
 
         // values have to be scaled back to their true forms!
-        float2 gravityForce = texData * scaledMass;
+        float4 gravityForce = texData * scaledMass;
 
         // rotate force vectors by rotation of attractor
         float cosRot = cos(data.rotation * DEGREES_TO_RADIANS);
@@ -252,7 +266,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         float2 pointForce = (1 - doNotCount) * (direction * forceMagnitude);
         
         // this determines whether we're inside or outside the baked texture
-        float isOutsideBounds = or(or(when_le(coord.x, 0), when_le(coord.y, 0)), or(when_ge(coord.x, data.size), when_ge(coord.y, data.size)));
+        float isOutsideBounds = or(or(when_le(coord.x, 1), when_le(coord.y, 1)), or(when_ge(coord.x, data.size - 1), when_ge(coord.y, data.size - 1)));
 
         result += float3(lerp(bakedForce, pointForce, isOutsideBounds), 0);
 	}
@@ -261,7 +275,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     
     GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
 }
-
+		
 [numthreads(1, 1, 1)]
 void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
 {
@@ -318,35 +332,39 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
 
         result += (1 - doNotCount) * (direction * forceMagnitude);
     }
-
+    
     for (int k = 0; k < BakedCount; k++)
     {
         BakedAttractorData data = BakedAttractors[k];
         int doNotCount = data.ignore;
+
         float halfBaked = data.size * 0.5;
+        float2 origin = float2(halfBaked, halfBaked);
 
         float scale = data.scale;// * (data.size / DEFAULT_BAKED_SIZE);
 
-        float2 dataPos = float2(lerp(halfBaked, -halfBaked, invLerp(BottomLeft.x, TopRight.x, data.position.x)), 
-                            lerp(halfBaked, -halfBaked, invLerp(BottomLeft.x, TopRight.x, data.position.y)));
-
-        float2 coord = transform(uv, float2(halfBaked, halfBaked) - dataPos, -data.rotation * DEGREES_TO_RADIANS, scale) + dataPos;
-
+        float2 dataPos = float2(lerp(halfBaked, -halfBaked, invLerp(-halfBaked, halfBaked, data.position.x)), 
+                            lerp(halfBaked, -halfBaked, invLerp(-halfBaked, halfBaked, data.position.y)));
+                            
+        // convert the position of the point being acted in into
+        // texture space
+        float2 positionInTextureSpace = transform(position + origin, origin - dataPos, -data.rotation * DEGREES_TO_RADIANS, scale) + dataPos;
+        
         // first, we transform the texture and sample it to get the force "baked in"
-        float4 texData = BakedAttractorTextures[float3(coord, k)];
+        float4 texData = SampleBilinear(BakedAttractorTextures, k, positionInTextureSpace);
         
         // mass has to be divided by square of scale to stay constant
         // - doubling the size of an object will quarter its density (in 2 dimensions)
         float scaledMass = data.mass / (scale * scale);
 
         // values have to be scaled back to their true forms!
-        float2 gravityForce = texData * scaledMass;
+        float4 gravityForce = texData * scaledMass;
 
         // rotate force vectors by rotation of attractor
         float cosRot = cos(data.rotation * DEGREES_TO_RADIANS);
         float sinRot = sin(data.rotation * DEGREES_TO_RADIANS);
         float2x2 rotationMatrix = { cosRot, -sinRot, sinRot, cosRot };
-        
+
         float2 bakedForce = mul(rotationMatrix, float2(gravityForce.x, gravityForce.y));
 
         // next, we calculate point gravity towards the centre of gravity, in case we're outside the texture
@@ -364,9 +382,9 @@ void ComputePointForcesSeries(uint3 id : SV_DispatchThreadID)
         float2 pointForce = (1 - doNotCount) * (direction * forceMagnitude);
         
         // this determines whether we're inside or outside the baked texture
-        float isOutsideBounds = or(or(when_le(coord.x, 0), when_le(coord.y, 0)), or(when_ge(coord.x, data.size), when_ge(coord.y, data.size)));
+        float isOutsideBounds = or(or(when_le(positionInTextureSpace.x, 1), when_le(positionInTextureSpace.y, 1)), or(when_ge(positionInTextureSpace.x, data.size - 1), when_ge(positionInTextureSpace.y, data.size - 1)));
 
-        result += float3(lerp(bakedForce, pointForce, isOutsideBounds), 0);
+        result += lerp(bakedForce, pointForce, isOutsideBounds);
 	}
 
     PointForces[id.x] = result;

@@ -87,12 +87,23 @@ namespace Ricercar.Gravity
             m_gravityField.DeregisterAttractor(this);
         }
 
+        public bool debug = false;
+
         public void SetGravity(Vector2 gravity)
         {
+            if (debug)
+            {
+                Debug.Log("Gravity = " + gravity.ToString("F4"));
+                Debug.Log("Direction = " + gravity.normalized);
+                Debug.Log("Magnitude = " + gravity.magnitude);
+                Debug.Log("=============");
+            }
+
+            m_currentGravity = gravity;
+
             if (!m_applyForceToSelf)
                 return;
 
-            m_currentGravity = gravity;
             m_rigidbody.AddForce(m_currentGravity);
         }
 
@@ -115,13 +126,16 @@ namespace Ricercar.Gravity
         }
 
 #if UNITY_EDITOR
-        protected virtual void OnDrawGizmos()
+        protected virtual void OnDrawGizmosSelected()
         {
             if (m_isShell)
             {
                 Handles.color = Color.white;
                 Handles.DrawWireDisc(transform.position, Vector3.back, m_radius);
             }
+
+            if (!CurrentGravity.IsZero())
+                Utils.DrawArrow(Position, CurrentGravity.normalized, Color.white, CurrentGravity.magnitude * 5f, 1f);
         }
 #endif
     }

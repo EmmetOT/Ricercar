@@ -21,7 +21,7 @@ float invLerp(float from, float to, float value)
 {
 	return clamp((value - from) / (to - from), from, to);
 }
-			
+	
 [numthreads(1, 1, 1)]
 void CalculateMassDistribution(uint3 id : SV_DispatchThreadID)
 {

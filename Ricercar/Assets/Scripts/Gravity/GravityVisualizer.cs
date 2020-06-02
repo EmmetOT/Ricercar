@@ -53,6 +53,7 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         private Canvas m_canvas;
+        private RectTransform m_canvasRectTransform;
 
         [SerializeField]
         private RawImage m_rawImage;
@@ -103,7 +104,8 @@ namespace Ricercar.Gravity
         private void Initialize()
         {
             m_transform = transform;
-            m_size = (m_canvas.transform as RectTransform).rect.width;
+            m_canvasRectTransform = m_canvas.transform as RectTransform;
+            m_size = m_canvasRectTransform.rect.width;
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
 
@@ -156,7 +158,7 @@ namespace Ricercar.Gravity
 
         private void Update()
         {
-            if (m_transform.hasChanged)
+            if (m_transform.hasChanged || m_size != m_canvasRectTransform.rect.width)
             {
                 OnMoved();
                 m_transform.hasChanged = false;
@@ -167,6 +169,8 @@ namespace Ricercar.Gravity
 
             // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
 
+            Debug.Log("Sending in bottom left / top right");
+            m_size = (m_canvas.transform as RectTransform).rect.width;
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
 
@@ -246,6 +250,7 @@ namespace Ricercar.Gravity
 
         private void OnMoved()
         {
+            m_size = m_canvasRectTransform.rect.width;
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
         }

@@ -133,10 +133,10 @@ namespace Ricercar.Gravity
             if (m_attractorCount == 0 && m_bakedAttractorCount == 0)
                 return;
 
+            m_bakedAttractorTextureList.Clear();
+
             if (m_bakedAttractorCount > 0)
             {
-                m_bakedAttractorTextureList.Clear();
-
                 m_bakedAttractorTextureArray = new
                     Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, m_bakedAttractorCount, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
                 {
@@ -146,11 +146,9 @@ namespace Ricercar.Gravity
 
                 for (int i = 0; i < m_bakedAttractorCount; i++)
                 {
+                    Debug.Log("Getting texture " + i + " from " + m_bakedAttractors[i].Texture.name);
                     m_bakedAttractorTextureArray.SetPixels(m_bakedAttractors[i].Texture.GetPixels(), i, 0);
                 }
-
-                m_bakedAttractorTextureArray.Apply();
-                m_gravityFieldComputeShader.SetTexture(m_computePointForcesKernel, "BakedAttractorTextures", m_bakedAttractorTextureArray);
             }
             else
             {
@@ -162,6 +160,8 @@ namespace Ricercar.Gravity
                 };
             }
 
+            m_bakedAttractorTextureArray.Apply();
+
 
             m_forcesOutputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount + m_bakedAttractorCount), sizeof(float) * 2);
             m_pointInputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount), AttractorData.Stride);
@@ -169,10 +169,14 @@ namespace Ricercar.Gravity
 
             m_attractorOutputData = new Vector2[m_attractorCount + m_bakedAttractorCount];
 
+
             // send the data to the kernel of the compute shader meant for the gravity force between point attractors
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointAttractors", m_pointInputBuffer);
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "BakedAttractors", m_bakedInputBuffer);
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
+
+            m_gravityFieldComputeShader.SetTexture(m_computePointForcesKernel, "BakedAttractorTextures", m_bakedAttractorTextureArray);
+
             m_gravityFieldComputeShader.SetInt("PointCount", m_attractorCount);
             m_gravityFieldComputeShader.SetInt("BakedCount", m_bakedAttractorCount);
 

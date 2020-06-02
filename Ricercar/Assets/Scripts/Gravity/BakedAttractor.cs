@@ -22,6 +22,8 @@ namespace Ricercar.Gravity
         public bool AffectsField => m_affectsField;
 
         [SerializeField]
+        [OnValueChanged("OnScaleChanged")]
+        [MinValue(0.01f)]
         private float m_scale = 1f;
         public float Scale => m_scale;
 
@@ -57,7 +59,7 @@ namespace Ricercar.Gravity
         public Vector2 CurrentGravity => m_currentGravity;
 
         public Texture2D Texture => m_gravityMap.Texture;
-        public Vector2 CentreOfGravity => Position + m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity);
+        public Vector2 CentreOfGravity => transform.TransformPoint(m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity));
         public float Rotation => m_transform.eulerAngles.z;
         public float Size => m_gravityMap.Size;
 
@@ -89,15 +91,19 @@ namespace Ricercar.Gravity
             m_gravityField.DeregisterAttractor(this);
         }
 
+        private void OnScaleChanged()
+        {
+            m_transform.localScale = Vector3.one * m_scale;
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             Vector3 translate = transform.localToWorldMatrix.ExtractTranslation();
             Quaternion rotation = transform.localToWorldMatrix.ExtractRotation();
-            Matrix4x4 transformMatrix = Matrix4x4.TRS(translate, rotation, Vector3.one * Scale);
 
             Matrix4x4 matrix = Gizmos.matrix;
-            Gizmos.matrix = transformMatrix;
+            Gizmos.matrix = Matrix4x4.TRS(translate, rotation, Vector3.one * Scale);
 
             Gizmos.color = Color.white;
             Gizmos.DrawLine(m_gravityMap.LocalBottomLeftCorner, m_gravityMap.LocalBottomRightCorner);
@@ -111,8 +117,10 @@ namespace Ricercar.Gravity
             Gizmos.color = Color.white;
             Gizmos.DrawLine(m_gravityMap.LocalTopRightCorner, m_gravityMap.LocalBottomRightCorner);
 
+            Gizmos.matrix = Matrix4x4.TRS(translate, rotation, Vector3.one);
+
             Gizmos.color = Color.white;
-            Gizmos.DrawSphere(CentreOfGravity, 5f);
+            Gizmos.DrawSphere(m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity), 5f);
 
             Gizmos.matrix = matrix;
         }

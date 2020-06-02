@@ -67,32 +67,6 @@
 				return float4(invLerp(from.x, to.x, value), invLerp(from.y, to.y, value), invLerp(from.z, to.z, value), 1);
 			}
 
-			inline float4 sampleGravity(float x, float y)
-			{
-				int fieldSizeMinus1 = _FieldSize - 1;
-
-				int x0 = floor(x * fieldSizeMinus1);
-				int y0 = floor(y * fieldSizeMinus1);
-
-				int x1 = min(fieldSizeMinus1, x0 + 1);
-				int y1 = min(fieldSizeMinus1, y0 + 1);
-				
-				// binomial interpolation
-
-				float x_t = invLerp(x0, x1, x * fieldSizeMinus1);
-				float y_t = invLerp(y0, y1, y * fieldSizeMinus1);
-
-				float3 gravityBottomLeft = _Points[y0 * _FieldSize + x0];
-				float3 gravityBottomRight = _Points[y0 * _FieldSize + x1];
-				float3 gravityTopLeft = _Points[y1 * _FieldSize + x0];
-				float3 gravityTopRight = _Points[y1 * _FieldSize + x1];
-
-				float3 lerp_bottom = lerp(gravityBottomLeft, gravityBottomRight, x_t);
-				float3 lerp_top = lerp(gravityTopLeft, gravityTopRight, x_t);
-				
-				return float4(lerp(lerp_bottom, lerp_top, y_t), 1);
-			}
-
 			struct appdata_t
 			{
 				float4 vertex : POSITION;
@@ -122,9 +96,7 @@
 
 			fixed4 frag(v2f i) : SV_Target
 			{
-				//return tex2D(_GravityFieldOutputTexture, i.uv);
-
-				float4 gravityData = tex2D(_GravityFieldOutputTexture, i.uv);//sampleGravity(i.uv.x, i.uv.y);
+				float4 gravityData = tex2D(_GravityFieldOutputTexture, i.uv);
 				float2 gravity = float2(gravityData.x, gravityData.y);
 				float towardsiness = gravityData.z;
 
@@ -142,53 +114,10 @@
 				float4 tint = lerp(float4(1, 1, 1, 1), float4(0, 0, 1, 1), positiveTowardsiness);
 				tint = lerp(tint, float4(1, 0, 0, 1), negativeTowardsiness);
 
-				return sampleCol * tint;
+				return sampleCol * tint * i.color;
 
 			#else
-
-				return gravityData;
-
-				float left;
-				float right;
-
-				if (gravity.x < 0)
-				{
-					left = -gravity.x;
-					right = 0;
-				}
-				else
-				{
-					left = 0;
-					right = gravity.x;
-				}
-
-				float up;
-				float down;
-
-				if (gravity.y < 0)
-				{
-					down = -gravity.y;
-					up = 0;
-				}
-				else
-				{
-					down = 0;
-					up = gravity.y;
-				}
-
-				float4 result = float4(0, 0, 0, 1);
-
-				left *= _ColourScale;
-				up *= _ColourScale;
-				down *= _ColourScale;
-				right *= _ColourScale;
-
-				result = lerp(result, float4(0, 0, 1, 1), left);
-				result = lerp(result, float4(0, 1, 0, 1), up);
-				result = lerp(result, float4(1, 0, 0, 1), down);
-				result = lerp(result, float4(1, 1, 0, 1), right);
-
-				return result;
+				return float4(gravity, 0, 1) * i.color;
 			#endif
 			}
 
