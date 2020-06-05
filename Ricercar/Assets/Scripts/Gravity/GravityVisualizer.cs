@@ -31,7 +31,7 @@ namespace Ricercar.Gravity
 
         private const string POINT_ARRAY_PROPERTY = "_Points";
         private const string FIELD_SIZE_PROPERTY = "_FieldSize";
-        private const string EFFECT_SCALAR_PROPERTY = "_ColourScale";
+        private const string EFFECT_SCALAR_PROPERTY = "_EffectScalar";
         private const string GRID_SCALE_PROPERTY = "_GridScale";
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 

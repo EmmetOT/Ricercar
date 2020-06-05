@@ -6,7 +6,7 @@
 		_GravityFieldOutputTexture("Texture", 2D) = "white" {}
 		
 		_FieldSize("Field Size", int) = 0
-		_ColourScale("Colour Scale", float) = 1
+		_EffectScalar("Effect Scalar", float) = 1
 		_GridScale("Grid Scale", float) = 0.2
 		[Toggle(IS_DISTORTION_MAP)] _IsDistortionMap("Is Distortion Map", float) = 0
 	}
@@ -49,7 +49,7 @@
 			sampler2D _GravityFieldOutputTexture;
 
 			uniform int _FieldSize;
-			uniform float _ColourScale;
+			uniform float _EffectScalar;
 			uniform float _GridScale;
 
 			inline float invLerp(float from, float to, float value) 
@@ -97,7 +97,7 @@
 			fixed4 frag(v2f i) : SV_Target
 			{
 				float4 gravityData = tex2D(_GravityFieldOutputTexture, i.uv);
-				float2 gravity = float2(gravityData.x, gravityData.y);
+				float2 gravity = float2(gravityData.x, gravityData.y) * _EffectScalar;
 				float towardsiness = gravityData.z;
 
 			#ifdef IS_DISTORTION_MAP
@@ -106,8 +106,8 @@
 
 				// split towardsiness into values representing its negativeness and positiveness
 
-				float positiveTowardsiness = max(0, towardsiness) * _ColourScale;
-				float negativeTowardsiness = -min(0, towardsiness) * _ColourScale;
+				float positiveTowardsiness = max(0, towardsiness) * _EffectScalar;
+				float negativeTowardsiness = -min(0, towardsiness) * _EffectScalar;
 
 				float4 sampleCol = tex2D(_MainTex, distortedUVs);
 
