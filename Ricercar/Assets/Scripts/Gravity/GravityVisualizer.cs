@@ -169,7 +169,6 @@ namespace Ricercar.Gravity
 
             // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
 
-            Debug.Log("Sending in bottom left / top right");
             m_size = (m_canvas.transform as RectTransform).rect.width;
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);

@@ -10,7 +10,7 @@ namespace Ricercar.Gravity
     {
         private const int MAX_INPUT_SIZE = 256;
 
-        private const string COMPUTE_SHADER_PATH = "GravityRasterizerShader";
+        private const string COMPUTE_SHADER_PATH = "Shaders/GravityRasterizerShader";
 
         private const string MASS_DISTRIBUTION_KERNEL = "CalculateMassDistribution";
         private const string MASS_DISTRIBUTION_INPUT_TEXTURE = "ImageInput";

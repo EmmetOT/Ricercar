@@ -87,18 +87,8 @@ namespace Ricercar.Gravity
             m_gravityField.DeregisterAttractor(this);
         }
 
-        public bool debug = false;
-
         public void SetGravity(Vector2 gravity)
         {
-            if (debug)
-            {
-                Debug.Log("Gravity = " + gravity.ToString("F4"));
-                Debug.Log("Direction = " + gravity.normalized);
-                Debug.Log("Magnitude = " + gravity.magnitude);
-                Debug.Log("=============");
-            }
-
             m_currentGravity = gravity;
 
             if (!m_applyForceToSelf)

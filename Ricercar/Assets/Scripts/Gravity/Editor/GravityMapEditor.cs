@@ -16,6 +16,8 @@ namespace Ricercar.Gravity
 
         private Material m_lineMaterial;
 
+        private bool m_showCentreOfGravity = false;
+
         private void OnEnable()
         {
             m_sourceTexture = serializedObject.FindProperty("m_sourceTexture");
@@ -53,24 +55,29 @@ namespace Ricercar.Gravity
 
             GUI.DrawTexture(rect, tex);
 
-            Vector2 centreOfGravity = m_centreOfGravity.vector2Value;
+            m_showCentreOfGravity = EditorGUILayout.Toggle("Show Centre of Gravity", m_showCentreOfGravity);
 
-            m_lineMaterial.SetPass(0);
-            GL.PushMatrix();
+            if (m_showCentreOfGravity)
+            {
+                Vector2 centreOfGravity = m_centreOfGravity.vector2Value;
 
-            GL.Begin(GL.LINES);
-            GL.Color(Color.white);
+                m_lineMaterial.SetPass(0);
+                GL.PushMatrix();
 
-            // vertical line
-            GL.Vertex(Vector2.Lerp(bottomLeft, bottomRight, centreOfGravity.x / GravityMap.SIZE));
-            GL.Vertex(Vector2.Lerp(topLeft, topRight, centreOfGravity.x / GravityMap.SIZE));
+                GL.Begin(GL.LINES);
+                GL.Color(Color.white);
 
-            // horizontal line
-            GL.Vertex(Vector2.Lerp(topLeft, bottomLeft, 1f - (centreOfGravity.y / GravityMap.SIZE)));
-            GL.Vertex(Vector2.Lerp(topRight, bottomRight, 1f - (centreOfGravity.y / GravityMap.SIZE)));
+                // vertical line
+                GL.Vertex(Vector2.Lerp(bottomLeft, bottomRight, centreOfGravity.x / GravityMap.SIZE));
+                GL.Vertex(Vector2.Lerp(topLeft, topRight, centreOfGravity.x / GravityMap.SIZE));
 
-            GL.End();
-            GL.PopMatrix();
+                // horizontal line
+                GL.Vertex(Vector2.Lerp(topLeft, bottomLeft, 1f - (centreOfGravity.y / GravityMap.SIZE)));
+                GL.Vertex(Vector2.Lerp(topRight, bottomRight, 1f - (centreOfGravity.y / GravityMap.SIZE)));
+
+                GL.End();
+                GL.PopMatrix();
+            }
 
             EditorGUILayout.PropertyField(m_centreOfGravity);
             EditorGUILayout.PropertyField(m_size);

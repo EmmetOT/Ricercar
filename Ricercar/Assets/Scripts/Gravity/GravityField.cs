@@ -39,7 +39,7 @@ namespace Ricercar.Gravity
 
         private void Start()
         {
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputePointForcesSeries");
+            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputeForces");
             RefreshComputeBuffers();
         }
 

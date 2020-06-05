@@ -1,12 +1,9 @@
-﻿#include "Assets/Scripts/Gravity/ShaderStuff.cginc"
+﻿#include "Assets/Scripts/Gravity/Resources/Shaders/GravityShaderResources.cginc"
 #pragma kernel CalculateMassDistribution
 #pragma kernel GenerateGravityMap
 #pragma kernel ClearOutputBuffer
 
-#define G 667.4
-#define SIZE 256
 #define MULTIPLICATION_FACTOR 10000.0
-#define MAX_ABS_VAL 1.0
 
 Texture2D<float4> ImageInput;
 RWTexture2D<float4> GravityMapOutput;
@@ -15,8 +12,6 @@ RWStructuredBuffer<int> MassDistributionOutput;
 AppendStructuredBuffer<float2> OccupiedTexelsAppendBuffer;
 StructuredBuffer<float2> OccupiedTexelsStructuredBuffer;
 
-float TestMassDistribution2;
-
 StructuredBuffer<uint> OccupiedTexelsCount;
 uint InputWidth;
 uint InputHeight;
@@ -24,6 +19,7 @@ uint InputHeight;
 [numthreads(3, 1, 1)]
 void ClearOutputBuffer(uint3 id : SV_DispatchThreadID)
 {
+    // this kernel just exists to empty the given buffer.
     MassDistributionOutput[id.x] = 0;
 }
 
@@ -45,14 +41,16 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
 {
     float massDistribution = (float)MassDistributionOutput[0] / MULTIPLICATION_FACTOR;
 
-    //float2 position = id.xy;
     float2 position = float2(id.x, id.y);
 
     float3 totalGravityForce = float3(0, 0, 0);
 
-    uint inputXOffset = (SIZE - InputWidth) / 2;
-    uint inputYOffset = (SIZE - InputHeight) / 2;
+    uint inputXOffset = (DEFAULT_BAKED_SIZE - InputWidth) / 2;
+    uint inputYOffset = (DEFAULT_BAKED_SIZE - InputHeight) / 2;
 
+    // OccupiedTexelsStructuredBuffer is a buffer which contains the coordinates of each
+    // occupied (alpha nonzero) texel in the input texture. this is faster than iterating over every single
+    // pixel, since most will be empty
     for (uint i = 0; i < OccupiedTexelsCount[0]; i++)
     {
         uint2 inputTexelPosition = OccupiedTexelsStructuredBuffer[i];
@@ -61,35 +59,22 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
         uint x = (uint)texelPosition.x;
         uint y = (uint)texelPosition.y;
 
-        //float2 sampleCoords = texelPosition - float2(TextureOutputOffset, TextureOutputOffset);
-
+        // prevent us from checking the gravity from a texel to itself.
         int notSameTexel = or(when_neq(id.x, x), when_neq(id.y, y));
 
         float4 texel = ImageInput[inputTexelPosition];
 
-        float mass = texel.a / massDistribution;
+        // mass is normalized by total 'mass' (sum of alpha values) so resulting map will always have an
+        // overall mass of 1
+        float3 calculation = CalculateGravity(texelPosition, position, texel.a / massDistribution, 1.0);
 
-        // adding a tiny number prevents NaN
-        float2 difference = (texelPosition - position) + 0.00000001;
-        float2 direction = normalize(difference);
-        float sqrMagnitude = dot(difference, difference);
-
-        float forceMagnitude = G * mass / sqrMagnitude;
-        float2 gravityForce = (direction * forceMagnitude);
-
-        float towardsiness = dot(normalize(gravityForce), direction) * forceMagnitude;
-        
-        // not entirely sure whether this counts as branching,
-        // i need a way to convert a nan to a zero.
-        // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
-        towardsiness = 0;//isnan(towardsiness) ? 0 : towardsiness;
-
-        float3 contribution = float3(notSameTexel * gravityForce, towardsiness);
-        totalGravityForce += contribution;
+        totalGravityForce += float3(notSameTexel * calculation.x, notSameTexel * calculation.y, calculation.z);
 	}
 
+    // we also take note of how much this texel contributes to the centre of mass of the input
     float2 centreOfMassContribution = position * ImageInput[id.xy].a / massDistribution;
 
+    // atomic operations can only be applied to integers, so we multiply by a large number and cast it to an int
     InterlockedAdd(MassDistributionOutput[1], (int)(centreOfMassContribution.x * MULTIPLICATION_FACTOR));
     InterlockedAdd(MassDistributionOutput[2], (int)(centreOfMassContribution.y * MULTIPLICATION_FACTOR));
 
