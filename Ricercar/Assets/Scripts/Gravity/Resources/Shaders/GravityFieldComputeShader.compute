@@ -6,12 +6,13 @@
 #define THREAD_GROUP_SIZE 256
 
 // 2d positions where z corresponds to mass of the point
-StructuredBuffer<AttractorData> PointAttractors;
+uniform StructuredBuffer<AttractorData> PointAttractors : register(t1);
 int PointCount;
 
-StructuredBuffer<BakedAttractorData> BakedAttractors;
+uniform StructuredBuffer<BakedAttractorData> BakedAttractors : register(t2);
 int BakedCount;
-Texture2DArray<float4> BakedAttractorTextures;
+
+uniform Texture2DArray<float4> BakedAttractorTextures : register(s1);
 
 RWStructuredBuffer<float2> PointForces;
 
@@ -39,44 +40,33 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         AttractorData data = PointAttractors[i];
         int doNotCount = data.ignore;
 
-        float2 pointPosition = float2(data.x + doNotCount, data.y + doNotCount);
-        float2 lineStartPos = float2(data.lineStartX + doNotCount, data.lineStartY + doNotCount);
-        float2 lineEndPos = float2(data.lineEndX + doNotCount, data.lineEndY + doNotCount);
+        float2 otherPosition = float2(data.x + doNotCount, data.y + doNotCount);
 
-        pointPosition = lerp(pointPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), data.isLine);
+        float otherMass = data.mass;
 
-        float mass = data.mass;
+        float3 calculation = CalculateGravity(otherPosition, position, otherMass, 1);
+        float2 gravity = float2(calculation.x, calculation.y);
 
-        float2 difference = pointPosition - position;
+        float gravityMagnitude = length(gravity);
+        float2 gravityDirection = normalize(gravity);
 
-        float sqrMagnitude = dot(difference, difference);
-        float magnitude = sqrt(sqrMagnitude);
+        float distance = length(otherPosition - position);
+        float shellGravity = lerp(0, data.surfaceGravityForce, distance / max(data.radius, EPSILON));
+        int insideShell = when_lt(distance, data.radius);
 
-        float2 direction = difference / magnitude;
-
-        float forceMagnitude = G * mass / sqrMagnitude;
-
-        if (data.isLine != 1)
-        {
-            float shellGravity = lerp(0, data.surfaceGravityForce, magnitude / max(data.radius, 0.0001));
-            int insideShell = when_lt(magnitude, data.radius);
-
-            forceMagnitude = lerp(forceMagnitude, shellGravity, insideShell);
-		}
-
-        float2 gravityForce = (1 - doNotCount) * (direction * forceMagnitude);
-        float finalMagnitude = length(gravityForce);
-
-        float towardsiness = dot(normalize(gravityForce), direction) * finalMagnitude;
+        gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
         
-        validAttractors += 1 - isnan(towardsiness);
+        //float towardsiness = dot(normalize(gravityForce), direction) * finalMagnitude;
+        
+        //validAttractors += 1 - isnan(towardsiness);
 
         // not entirely sure whether this counts as branching,
         // i need a way to convert a nan to a zero.
         // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
-        towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+        //towardsiness = isnan(towardsiness) ? 0 : towardsiness;
 
-        result += float3(gravityForce.x, gravityForce.y, towardsiness);
+        //result += float3(gravityForce.x, gravityForce.y, towardsiness);
+        result += float3((1 - doNotCount) * gravityMagnitude * gravityDirection, 0);
 	}
     
     float2 globalOffset = (TopRight + BottomLeft) * 0.5; // centre 
@@ -109,17 +99,17 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
     for (int i = 0; i < PointCount; i++)
     {
-        AttractorData otherPoint = PointAttractors[i];
+        AttractorData data = PointAttractors[i];
 
         // we dont want to add the gravity 
         // for the attractor to itself. this value returns 1 if the indices are equal,
         // else 0
         // we also use this to disable gravitation towards certain objects
-        int doNotCount = or(otherPoint.ignore, when_eq(i, id.x));
+        int doNotCount = or(data.ignore, when_eq(i, id.x));
 
         // adding the value here to prevent a division by 0. it doesn't matter, this calculation
         // will be discarded anyway
-        float2 otherPosition = float2(otherPoint.x + doNotCount, otherPoint.y + doNotCount);
+        float2 otherPosition = float2(data.x + doNotCount, data.y + doNotCount);
 
         // calculate for lines
         //float2 lineStartPos = float2(otherPoint.lineStartX + doNotCount, otherPoint.lineStartY + doNotCount);
@@ -127,7 +117,7 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
         //otherPosition = lerp(otherPosition, ProjectPointOnLineSegment(lineStartPos, lineEndPos, position), otherPoint.isLine);
         
-        float otherMass = otherPoint.mass;
+        float otherMass = data.mass;
 
         float3 calculation = CalculateGravity(otherPosition, position, otherMass, mass);
         float2 gravity = float2(calculation.x, calculation.y);
@@ -139,8 +129,8 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
         // force of gravity approaches zero 
 
         float distance = length(otherPosition - position);
-        float shellGravity = lerp(0, otherPoint.surfaceGravityForce * mass, distance / max(otherPoint.radius, EPSILON));
-        int insideShell = when_lt(distance, otherPoint.radius);
+        float shellGravity = lerp(0, data.surfaceGravityForce * mass, distance / max(data.radius, EPSILON));
+        int insideShell = when_lt(distance, data.radius);
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
         
@@ -153,7 +143,8 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
         float2 origin = float2(data.size, data.size) * 0.5;
 
-        result += CalculateGravity(BakedAttractorTextures, j, BakedAttractors[j], position + origin, 1, -data.position, position, mass);
+        // float3 CalculateGravity(Texture2DArray<float4> textures, int index, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
+        result += CalculateGravity(BakedAttractorTextures, j, data, position + origin, 1.0, -data.position, position, mass);
 	}
 
     PointForces[id.x] = result;

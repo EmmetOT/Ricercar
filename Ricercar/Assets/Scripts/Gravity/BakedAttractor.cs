@@ -71,7 +71,7 @@ namespace Ricercar.Gravity
             m_currentGravity = gravity;
 
             if (m_rigidbody != null)
-                m_rigidbody.AddForce(m_currentGravity);
+                m_rigidbody.AddForce(m_currentGravity * Time.fixedDeltaTime);
         }
 
         private void Reset()

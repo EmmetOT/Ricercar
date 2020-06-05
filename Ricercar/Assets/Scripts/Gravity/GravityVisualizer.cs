@@ -101,8 +101,15 @@ namespace Ricercar.Gravity
         [ReadOnly]
         private RenderTexture m_renderTexture;
 
+        private bool m_initialized = false;
+
         private void Initialize()
         {
+            m_initialized = true;
+
+            Debug.Log("Initializing visualizer.");
+            //m_gravityFieldComputeShader = Instantiate(m_gravityFieldComputeShader);
+
             m_transform = transform;
             m_canvasRectTransform = m_canvas.transform as RectTransform;
             m_size = m_canvasRectTransform.rect.width;
@@ -110,6 +117,7 @@ namespace Ricercar.Gravity
             m_topRight = GetTopRight();
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
+            Debug.Log("Found kernel: " + m_computeFullFieldKernel);
 
             m_renderTexture = GravityField.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
 
@@ -144,20 +152,11 @@ namespace Ricercar.Gravity
             m_renderTexture.Release();
         }
 
-        public void SetInputData(ComputeBuffer pointInputBuffer, ComputeBuffer bakedInputBuffer, Texture2DArray bakedTextureInput)
-        {
-            if (m_computeFullFieldKernel == -1)
-                return;
-
-            // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
-
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "PointAttractors", pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computeFullFieldKernel, "BakedAttractors", bakedInputBuffer);
-            m_gravityFieldComputeShader.SetTexture(m_computeFullFieldKernel, "BakedAttractorTextures", bakedTextureInput);
-        }
-
         private void Update()
         {
+            if (!m_initialized)
+                return;
+
             if (m_transform.hasChanged || m_size != m_canvasRectTransform.rect.width)
             {
                 OnMoved();
@@ -175,55 +174,6 @@ namespace Ricercar.Gravity
 
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
-        }
-
-//        [Button]
-//        private void SetTexture()
-//        {
-//            Initialize();
-
-//            ComputeBuffer inputBuffer = m_gravityField.ForceGeneratePointInputBuffer();
-
-//            if (inputBuffer == null)
-//                return;
-
-//            SetInputData(inputBuffer);
-//            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
-
-//            m_rawImage.texture = GenerateTexture();
-
-//            DestroyImmediate(m_materialInstance);
-
-//            ReleaseBuffers();
-//            m_gravityField.ReleaseBuffers();
-
-//#if UNITY_EDITOR
-//            EditorUtility.SetDirty(this);
-//            EditorUtility.SetDirty(m_rawImage);
-//#endif
-//        }
-
-        private Texture2D GenerateTexture()
-        {
-            RenderTexture destination = RenderTexture.GetTemporary((int)m_textureResolution, (int)m_textureResolution);
-            Graphics.Blit(m_background, destination, m_materialInstance);
-
-            RenderTexture active = RenderTexture.active;
-            RenderTexture.active = destination;
-
-            Texture2D tex = new Texture2D((int)m_textureResolution, (int)m_textureResolution)
-            {
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Repeat
-            };
-
-            tex.ReadPixels(new Rect(0, 0, (int)m_textureResolution, (int)m_textureResolution), 0, 0, false);
-            tex.Apply();
-
-            RenderTexture.active = active;
-            RenderTexture.ReleaseTemporary(destination);
-
-            return tex;
         }
 
         public Vector2 GetTopRight()

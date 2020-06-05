@@ -94,7 +94,7 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            m_rigidbody.AddForce(m_currentGravity);
+            m_rigidbody.AddForce(m_currentGravity * Time.fixedDeltaTime);
         }
 
         [Button("Calculate Surface Gravity")]
@@ -125,7 +125,7 @@ namespace Ricercar.Gravity
             }
 
             if (!CurrentGravity.IsZero())
-                Utils.DrawArrow(Position, CurrentGravity.normalized, Color.white, CurrentGravity.magnitude * 5f, 1f);
+                Utils.DrawArrow(Position, CurrentGravity.normalized, Color.white, CurrentGravity.magnitude * 0.5f, 3f);
         }
 #endif
     }

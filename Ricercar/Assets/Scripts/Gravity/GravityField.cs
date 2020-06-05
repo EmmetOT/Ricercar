@@ -9,12 +9,10 @@ namespace Ricercar.Gravity
     {
         public const float G = 667.4f;
 
-        //private const float MIN_MOVEMENT_SQR_MAGNITUDE = 0.1f;
-
         public const UnityEngine.Experimental.Rendering.GraphicsFormat GRAPHICS_FORMAT = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat;
 
-        private List<IAttractor> m_attractors = new List<IAttractor>();
-        private List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
+        private readonly List<IAttractor> m_attractors = new List<IAttractor>();
+        private readonly List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
         private readonly List<GravityVisualizer> m_visualizers = new List<GravityVisualizer>();
 
         [SerializeField]
@@ -104,21 +102,6 @@ namespace Ricercar.Gravity
                 RefreshComputeBuffers();
         }
 
-        /// <summary>
-        /// Not recommended for normal use. Forces this class to generate a buffer full of point attractor data. This could be used to generate 
-        /// static textures outside of runtime.
-        /// </summary>
-        public ComputeBuffer ForceGeneratePointInputBuffer()
-        {
-            m_attractors = new List<IAttractor>(FindObjectsOfType<SimpleRigidbodyAttractor>());
-            m_attractors.AddRange(FindObjectsOfType<NonRigidbodyAttractor>());
-
-            m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputePointForcesSeries");
-            RefreshComputeBuffers();
-            ComputePointForces();
-            return m_pointInputBuffer;
-        }
-
         private void RefreshComputeBuffers()
         {
             // prevent this class from doing anything until after start
@@ -162,29 +145,26 @@ namespace Ricercar.Gravity
 
             m_bakedAttractorTextureArray.Apply();
 
-
             m_forcesOutputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount + m_bakedAttractorCount), sizeof(float) * 2);
             m_pointInputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount), AttractorData.Stride);
             m_bakedInputBuffer = new ComputeBuffer(Mathf.Max(1, m_bakedAttractorCount), BakedAttractorData.Stride);
 
             m_attractorOutputData = new Vector2[m_attractorCount + m_bakedAttractorCount];
 
+            // set global data (field and visualizers)
 
-            // send the data to the kernel of the compute shader meant for the gravity force between point attractors
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointAttractors", m_pointInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "BakedAttractors", m_bakedInputBuffer);
-            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
+            Debug.Log("Setting buffers.");
 
-            m_gravityFieldComputeShader.SetTexture(m_computePointForcesKernel, "BakedAttractorTextures", m_bakedAttractorTextureArray);
+            Shader.SetGlobalBuffer("PointAttractors", m_pointInputBuffer);
+            Shader.SetGlobalBuffer("BakedAttractors", m_bakedInputBuffer);
+            Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
 
             m_gravityFieldComputeShader.SetInt("PointCount", m_attractorCount);
             m_gravityFieldComputeShader.SetInt("BakedCount", m_bakedAttractorCount);
 
-            for (int i = 0; i < m_visualizers.Count; i++)
-            {
-                if (m_visualizers[i] != null)
-                    m_visualizers[i].SetInputData(m_pointInputBuffer, m_bakedInputBuffer, m_bakedAttractorTextureArray);
-            }
+            // set field only data
+
+            m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
         }
 
         private void ComputePointForces()
