@@ -123,8 +123,8 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         float scale = data.scale;
 
-        float2 dataPos = visualizerPos - data.position;
-        float2 coord = transform(uv, float2(halfBaked, halfBaked) - dataPos , -data.rotation * DEGREES_TO_RADIANS, normalizedVisualizerSizer * scale) + dataPos;
+        float2 dataPos = (visualizerPos - data.position) * (normalizedVisualizerSizer);
+        float2 coord = transform(uv, float2(halfBaked, halfBaked) - dataPos, -data.rotation * DEGREES_TO_RADIANS, normalizedVisualizerSizer * scale) + dataPos;
 
         // first, we transform the texture and sample it to get the force "baked in"
         float4 texData = SampleBilinear(BakedAttractorTextures, k, coord);
