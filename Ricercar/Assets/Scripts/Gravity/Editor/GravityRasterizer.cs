@@ -15,11 +15,16 @@ namespace Ricercar.Gravity
         private const string MASS_DISTRIBUTION_KERNEL = "CalculateMassDistribution";
         private const string MASS_DISTRIBUTION_INPUT_TEXTURE = "ImageInput";
         private const string MASS_DISTRIBUTION_OUTPUT_BUFFER = "MassDistributionOutput";
+        private const string OCCUPIED_TEXEL_APPEND_BUFFER = "OccupiedTexelsAppendBuffer";
+        private const string OCCUPIED_TEXEL_STRUCTURED_BUFFER = "OccupiedTexelsStructuredBuffer";
+        private const string OCCUPIED_TEXEL_COUNT_BUFFER = "OccupiedTexelsCount";
 
         private const string GENERATE_GRAVITY_MAP_KERNEL = "GenerateGravityMap";
         private const string GRAVITY_MAP_OUTPUT_TEXTURE = "GravityMapOutput";
         private const string INPUT_TEXTURE_WIDTH = "InputWidth";
         private const string INPUT_TEXTURE_HEIGHT = "InputHeight";
+
+        private const string CLEAR_OUTPUT_BUFFER_KERNEL = "ClearOutputBuffer";
 
         private const float MULTIPLICATION_FACTOR = 10000f;
 
@@ -31,30 +36,58 @@ namespace Ricercar.Gravity
 
         private static int m_massDistributionKernel;
         private static int m_generateGravityMapKernel;
+        private static int m_clearOutputBufferKernel;
+
         private static ComputeBuffer m_outputBuffer;
+        private static ComputeBuffer m_occupiedTexelsAppendBuffer;
+        private static ComputeBuffer m_occupiedTexelsCountBuffer;
 
         private static readonly int[] m_outputData = new int[3];
 
         [MenuItem("Tools/Gravity Rasterizer")]
         public static void ShowWindow()
         {
-            m_outputBuffer?.Release();
+            ReleaseBuffers();
+            Initialize();
 
+            GetWindow(typeof(GravityRasterizer));
+        }
+
+        private static void Initialize()
+        {
             m_centreOfGravity = default;
             m_computeShader = Resources.Load<ComputeShader>(COMPUTE_SHADER_PATH);
 
             m_massDistributionKernel = m_computeShader.FindKernel(MASS_DISTRIBUTION_KERNEL);
             m_generateGravityMapKernel = m_computeShader.FindKernel(GENERATE_GRAVITY_MAP_KERNEL);
-            m_outputBuffer = new ComputeBuffer(3, 4);
+            m_clearOutputBufferKernel = m_computeShader.FindKernel(CLEAR_OUTPUT_BUFFER_KERNEL);
+
+            m_outputBuffer = new ComputeBuffer(3, sizeof(int));
             m_computeShader.SetBuffer(m_massDistributionKernel, MASS_DISTRIBUTION_OUTPUT_BUFFER, m_outputBuffer);
             m_computeShader.SetBuffer(m_generateGravityMapKernel, MASS_DISTRIBUTION_OUTPUT_BUFFER, m_outputBuffer);
+            m_computeShader.SetBuffer(m_clearOutputBufferKernel, MASS_DISTRIBUTION_OUTPUT_BUFFER, m_outputBuffer);
 
-            GetWindow(typeof(GravityRasterizer));
+            m_occupiedTexelsAppendBuffer = new ComputeBuffer(MAX_INPUT_SIZE * MAX_INPUT_SIZE, sizeof(float) * 2, ComputeBufferType.Append);
+
+            // setting the same buffer as an append buffer in one kernel
+            // and a structured buffer in another
+            m_computeShader.SetBuffer(m_massDistributionKernel, OCCUPIED_TEXEL_APPEND_BUFFER, m_occupiedTexelsAppendBuffer);
+            m_computeShader.SetBuffer(m_generateGravityMapKernel, OCCUPIED_TEXEL_STRUCTURED_BUFFER, m_occupiedTexelsAppendBuffer);
+
+            m_occupiedTexelsCountBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.IndirectArguments);
+            m_computeShader.SetBuffer(m_generateGravityMapKernel, OCCUPIED_TEXEL_COUNT_BUFFER, m_occupiedTexelsCountBuffer);
+        }
+
+        private static void ReleaseBuffers()
+        {
+            m_outputBuffer?.Release();
+            m_occupiedTexelsAppendBuffer?.Release();
+            m_occupiedTexelsCountBuffer?.Release();
         }
 
         private void OnDestroy()
         {
-            m_outputBuffer?.Release();
+            ReleaseBuffers();
         }
 
         public void OnGUI()
@@ -106,10 +139,6 @@ namespace Ricercar.Gravity
                         minY = cols[i].g;
                 }
 
-                Debug.Log("MaxX = " + maxX);
-                Debug.Log("MaxY = " + maxY);
-                Debug.Log("MinX = " + minX);
-                Debug.Log("MinY = " + minY);
 
                 renderTexture.Release();
             }
@@ -134,6 +163,14 @@ namespace Ricercar.Gravity
 
         public static void GenerateGravityTexture(Texture2D input, RenderTexture output, out Vector2 centreOfGravity)
         {
+            if (m_computeShader == null || m_occupiedTexelsAppendBuffer == null || m_occupiedTexelsCountBuffer == null)
+            {
+                ReleaseBuffers();
+                Initialize();
+            }
+
+            System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             centreOfGravity = default;
 
             if (input.width * input.height > MAX_INPUT_SIZE * MAX_INPUT_SIZE)
@@ -150,21 +187,31 @@ namespace Ricercar.Gravity
             m_computeShader.SetTexture(m_massDistributionKernel, MASS_DISTRIBUTION_INPUT_TEXTURE, input);
             m_computeShader.SetTexture(m_generateGravityMapKernel, MASS_DISTRIBUTION_INPUT_TEXTURE, input);
             m_computeShader.SetTexture(m_generateGravityMapKernel, GRAVITY_MAP_OUTPUT_TEXTURE, output);
-            m_computeShader.SetInt("TextureOutputOffset", (GravityMap.SIZE - input.width) / 2);
             m_computeShader.SetInt(INPUT_TEXTURE_WIDTH, input.width);
             m_computeShader.SetInt(INPUT_TEXTURE_HEIGHT, input.height);
 
-            m_outputData[0] = 0;
-            m_outputData[1] = 0;
-            m_outputData[2] = 0;
+            // first we dispatch the kernel, which just empties the buffer 
+            // equivalent to setting its data to 0, 0, 0, but faster than doing it on cpu side
+            m_computeShader.Dispatch(m_clearOutputBufferKernel, 1, 1, 1);
 
-            m_outputBuffer.SetData(m_outputData);
+            m_occupiedTexelsAppendBuffer.SetCounterValue(0);
+            m_occupiedTexelsCountBuffer.SetCounterValue(0);
 
+            // this kernel finds each texel which has mass, and sums the overall mass
             m_computeShader.Dispatch(m_massDistributionKernel, input.width, input.height, 1);
+            ComputeBuffer.CopyCount(m_occupiedTexelsAppendBuffer, m_occupiedTexelsCountBuffer, 0);
+
+            // finally, do a gravity calculation from each texel to every other texel with mass
+            // (this is why sparser textures will get faster results)
             m_computeShader.Dispatch(m_generateGravityMapKernel, GravityMap.SIZE / 32, GravityMap.SIZE / 32, 1);
 
+            // get the data for the centre of gravity. can't be avoided unfortunately :(
             m_outputBuffer.GetData(m_outputData);
 
+            stopwatch.Stop();
+            Debug.Log("Took " + stopwatch.ElapsedMilliseconds + " milliseconds");
+
+            // since atomic operations can only be on ints, we compute it as ints and then divide it by a large value
             float xCentre = (m_outputData[1] / MULTIPLICATION_FACTOR / input.width) * GravityMap.SIZE;
             float yCentre = (m_outputData[2] / MULTIPLICATION_FACTOR / input.height) * GravityMap.SIZE;
 

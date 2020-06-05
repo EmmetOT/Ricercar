@@ -1,5 +1,7 @@
-﻿#pragma kernel CalculateMassDistribution
+﻿#include "Assets/Scripts/Gravity/ShaderStuff.cginc"
+#pragma kernel CalculateMassDistribution
 #pragma kernel GenerateGravityMap
+#pragma kernel ClearOutputBuffer
 
 #define G 667.4
 #define SIZE 256
@@ -10,18 +12,21 @@ Texture2D<float4> ImageInput;
 RWTexture2D<float4> GravityMapOutput;
 
 RWStructuredBuffer<int> MassDistributionOutput;
+AppendStructuredBuffer<float2> OccupiedTexelsAppendBuffer;
+StructuredBuffer<float2> OccupiedTexelsStructuredBuffer;
 
 float TestMassDistribution2;
 
+StructuredBuffer<uint> OccupiedTexelsCount;
 uint InputWidth;
 uint InputHeight;
-int TextureOutputOffset;
 
-float invLerp(float from, float to, float value) 
+[numthreads(3, 1, 1)]
+void ClearOutputBuffer(uint3 id : SV_DispatchThreadID)
 {
-	return clamp((value - from) / (to - from), from, to);
+    MassDistributionOutput[id.x] = 0;
 }
-	
+
 [numthreads(1, 1, 1)]
 void CalculateMassDistribution(uint3 id : SV_DispatchThreadID)
 {
@@ -30,6 +35,9 @@ void CalculateMassDistribution(uint3 id : SV_DispatchThreadID)
     float4 texel = ImageInput[id.xy];
     
     InterlockedAdd(MassDistributionOutput[0], (int)(texel.a * MULTIPLICATION_FACTOR));
+
+    if (texel.a > 0)
+        OccupiedTexelsAppendBuffer.Append(float2(id.x, id.y));
 }
 
 [numthreads(32, 32, 1)]
@@ -42,42 +50,45 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
 
     float3 totalGravityForce = float3(0, 0, 0);
 
-    // iterate over a fixed size of 256*256, this makes sure the gravity effect
-    // extends past the bounds of the input image
-    for (uint x = 0; x < SIZE; x++)
+    uint inputXOffset = (SIZE - InputWidth) / 2;
+    uint inputYOffset = (SIZE - InputHeight) / 2;
+
+    for (uint i = 0; i < OccupiedTexelsCount[0]; i++)
     {
-        for (uint y = 0; y < SIZE; y++)
-        {
-            float2 texelPosition = float2(x, y);
-            float2 sampleCoords = texelPosition - float2(TextureOutputOffset, TextureOutputOffset);
+        uint2 inputTexelPosition = OccupiedTexelsStructuredBuffer[i];
 
-            if ((id.x != x || id.y != y) && x > TextureOutputOffset && y > TextureOutputOffset)
-            {
-                float4 texel = ImageInput[sampleCoords];
+        float2 texelPosition = float2(inputTexelPosition.x + inputXOffset, inputTexelPosition.y + inputYOffset);
+        uint x = (uint)texelPosition.x;
+        uint y = (uint)texelPosition.y;
 
-                float mass = texel.a / massDistribution;
+        //float2 sampleCoords = texelPosition - float2(TextureOutputOffset, TextureOutputOffset);
 
-                float2 difference = texelPosition - position;
-                float2 direction = normalize(difference);
-                float sqrMagnitude = dot(difference, difference);
+        int notSameTexel = or(when_neq(id.x, x), when_neq(id.y, y));
 
-                float forceMagnitude = G * mass / sqrMagnitude;
-                float2 gravityForce = (direction * forceMagnitude);
+        float4 texel = ImageInput[inputTexelPosition];
 
-                float towardsiness = dot(normalize(gravityForce), direction) * forceMagnitude;
+        float mass = texel.a / massDistribution;
+
+        // adding a tiny number prevents NaN
+        float2 difference = (texelPosition - position) + 0.00000001;
+        float2 direction = normalize(difference);
+        float sqrMagnitude = dot(difference, difference);
+
+        float forceMagnitude = G * mass / sqrMagnitude;
+        float2 gravityForce = (direction * forceMagnitude);
+
+        float towardsiness = dot(normalize(gravityForce), direction) * forceMagnitude;
         
-                // not entirely sure whether this counts as branching,
-                // i need a way to convert a nan to a zero.
-                // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
-                towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+        // not entirely sure whether this counts as branching,
+        // i need a way to convert a nan to a zero.
+        // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
+        towardsiness = 0;//isnan(towardsiness) ? 0 : towardsiness;
 
-                totalGravityForce += float3(gravityForce, towardsiness);
-			}
-		}
+        float3 contribution = float3(notSameTexel * gravityForce, towardsiness);
+        totalGravityForce += contribution;
 	}
-    
+
     float2 centreOfMassContribution = position * ImageInput[id.xy].a / massDistribution;
-    //float totalTowardsiness = totalGravityForce.z;
 
     InterlockedAdd(MassDistributionOutput[1], (int)(centreOfMassContribution.x * MULTIPLICATION_FACTOR));
     InterlockedAdd(MassDistributionOutput[2], (int)(centreOfMassContribution.y * MULTIPLICATION_FACTOR));
