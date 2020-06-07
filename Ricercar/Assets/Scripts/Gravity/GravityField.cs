@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Ricercar.Gravity
 {
@@ -35,6 +36,9 @@ namespace Ricercar.Gravity
 
         private int m_attractorCount = 0;
         private int m_bakedAttractorCount = 0;
+
+        [SerializeField]
+        private bool m_runAsync = false;
 
         private void Start()
         {
@@ -168,7 +172,7 @@ namespace Ricercar.Gravity
             Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
         }
 
-        private void SetAttractorData()
+        private void RunComputeShader()
         {
             if (m_attractors.IsNullOrEmpty() && m_bakedAttractors.IsNullOrEmpty())
                 return;
@@ -191,12 +195,23 @@ namespace Ricercar.Gravity
 
             m_pointInputBuffer.SetData(m_pointInputData);
             m_bakedInputBuffer.SetData(m_bakedInputData);
+            m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount + m_bakedAttractorCount, 1, 1);
         }
 
-        private void ComputePointForces()
+        /// <summary>
+        /// This method gets the data from the compute shader. It's by far the most expensive method. :U
+        /// </summary>
+        private void GetForces()
         {
-            m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount + m_bakedAttractorCount, 1, 1);
-            m_forcesOutputBuffer.GetData(m_attractorOutputData);
+            if (m_runAsync)
+                AsyncGPUReadback.Request(m_forcesOutputBuffer, OnAsyncGPUReadbackReceived);
+            else
+                m_forcesOutputBuffer.GetData(m_attractorOutputData);
+        }
+
+        private void OnAsyncGPUReadbackReceived(AsyncGPUReadbackRequest result)
+        {
+            result.GetData<Vector2>().CopyTo(m_attractorOutputData);
         }
 
         private void ApplyPointForces()
@@ -227,7 +242,7 @@ namespace Ricercar.Gravity
             if (m_computePointForcesKernel < 0)
                 return;
 
-            SetAttractorData();
+            RunComputeShader();
         }
 
         private void FixedUpdate()
@@ -235,7 +250,7 @@ namespace Ricercar.Gravity
             if (m_computePointForcesKernel < 0)
                 return;
 
-            ComputePointForces();
+            GetForces();
             ApplyPointForces();
         }
     }
