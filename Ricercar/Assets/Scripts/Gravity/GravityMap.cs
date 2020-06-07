@@ -29,6 +29,11 @@ namespace Ricercar.Gravity
         private float m_size;
         public float Size => m_size;
 
+        [SerializeField]
+        [ReadOnly]
+        private int m_guid;
+        public int GUID => m_guid;
+
         public Vector2 LocalTopLeftCorner => new Vector2(m_size * -0.5f, m_size * 0.5f);
         public Vector2 LocalTopRightCorner => new Vector2(m_size * 0.5f, m_size * 0.5f);
         public Vector2 LocalBottomLeftCorner => new Vector2(m_size * -0.5f, m_size * -0.5f);
@@ -54,6 +59,7 @@ namespace Ricercar.Gravity
             Utils.SaveTexture(texture, "GravityMap_Texture_" + name);
             GravityMap map = Utils.CreateAsset<GravityMap>("GravityMap_" + name);
 
+            map.m_guid = System.Guid.NewGuid().GetHashCode();
             map.m_sourceTexture = sourceTexture;
             map.m_texture = texture;
             map.m_centreOfGravity = centreOfGravity;

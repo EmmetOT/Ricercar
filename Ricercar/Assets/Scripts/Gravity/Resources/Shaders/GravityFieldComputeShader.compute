@@ -7,10 +7,10 @@
 
 // 2d positions where z corresponds to mass of the point
 uniform StructuredBuffer<AttractorData> PointAttractors : register(t1);
-int PointCount;
+int PointCount : register(t2);
 
-uniform StructuredBuffer<BakedAttractorData> BakedAttractors : register(t2);
-int BakedCount;
+uniform StructuredBuffer<BakedAttractorData> BakedAttractors : register(t3);
+int BakedCount : register(t4);
 
 uniform Texture2DArray<float4> BakedAttractorTextures : register(s1);
 

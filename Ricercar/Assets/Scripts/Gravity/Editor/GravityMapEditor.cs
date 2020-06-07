@@ -12,6 +12,7 @@ namespace Ricercar.Gravity
         private SerializedProperty m_texture;
         private SerializedProperty m_centreOfGravity;
         private SerializedProperty m_size;
+        private SerializedProperty m_guid;
         private SerializedProperty m_script;
 
         private Material m_lineMaterial;
@@ -24,6 +25,7 @@ namespace Ricercar.Gravity
             m_texture = serializedObject.FindProperty("m_texture");
             m_centreOfGravity = serializedObject.FindProperty("m_centreOfGravity");
             m_size = serializedObject.FindProperty("m_size");
+            m_guid = serializedObject.FindProperty("m_guid");
             m_script = serializedObject.FindProperty("m_Script");
             CreateLineMaterial();
         }
@@ -40,6 +42,7 @@ namespace Ricercar.Gravity
             GUI.enabled = false;
             EditorGUILayout.PropertyField(m_script);
             EditorGUILayout.PropertyField(m_sourceTexture);
+            EditorGUILayout.PropertyField(m_guid);
             GUI.enabled = true;
 
             Texture2D tex = (Texture2D)m_texture.objectReferenceValue;

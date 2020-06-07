@@ -87,20 +87,20 @@ namespace Ricercar.Gravity
             }
         }
 
-        public void RegisterVisualizer(GravityVisualizer visualizer)
-        {
-            if (m_visualizers.Contains(visualizer))
-                return;
+        //public void RegisterVisualizer(GravityVisualizer visualizer)
+        //{
+        //    if (m_visualizers.Contains(visualizer))
+        //        return;
 
-            m_visualizers.Add(visualizer);
-            RefreshComputeBuffers();
-        }
+        //    m_visualizers.Add(visualizer);
+        //    RefreshComputeBuffers();
+        //}
 
-        public void DeregisterVisualizer(GravityVisualizer visualizer)
-        {
-            if (m_visualizers.Remove(visualizer))
-                RefreshComputeBuffers();
-        }
+        //public void DeregisterVisualizer(GravityVisualizer visualizer)
+        //{
+        //    if (m_visualizers.Remove(visualizer))
+        //        RefreshComputeBuffers();
+        //}
 
         private void RefreshComputeBuffers()
         {
@@ -159,8 +159,8 @@ namespace Ricercar.Gravity
             Shader.SetGlobalBuffer("BakedAttractors", m_bakedInputBuffer);
             Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
 
-            m_gravityFieldComputeShader.SetInt("PointCount", m_attractorCount);
-            m_gravityFieldComputeShader.SetInt("BakedCount", m_bakedAttractorCount);
+            Shader.SetGlobalInt("PointCount", m_attractorCount);
+            Shader.SetGlobalInt("BakedCount", m_bakedAttractorCount);
 
             // set field only data
 

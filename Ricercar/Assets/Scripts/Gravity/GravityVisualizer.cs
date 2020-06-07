@@ -107,8 +107,7 @@ namespace Ricercar.Gravity
         {
             m_initialized = true;
 
-            Debug.Log("Initializing visualizer.");
-            //m_gravityFieldComputeShader = Instantiate(m_gravityFieldComputeShader);
+            m_gravityFieldComputeShader = Instantiate(m_gravityFieldComputeShader);
 
             m_transform = transform;
             m_canvasRectTransform = m_canvas.transform as RectTransform;
@@ -117,7 +116,6 @@ namespace Ricercar.Gravity
             m_topRight = GetTopRight();
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
-            Debug.Log("Found kernel: " + m_computeFullFieldKernel);
 
             m_renderTexture = GravityField.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
 
@@ -127,11 +125,18 @@ namespace Ricercar.Gravity
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
             m_materialInstance.SetInt(FIELD_SIZE_PROPERTY, (int)m_gravitySampleResolution);
+            m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 
             if (m_colourMode == ColourMode.Distortion)
                 m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
             else
                 m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+
+            m_size = (m_canvas.transform as RectTransform).rect.width;
+            m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
+            m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
+
+            m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 
             m_rawImage.texture = null;
             m_rawImage.material = m_materialInstance;
@@ -142,12 +147,12 @@ namespace Ricercar.Gravity
         private void OnEnable()
         {
             Initialize();
-            m_gravityField.RegisterVisualizer(this);
+            //m_gravityField.RegisterVisualizer(this);
         }
 
         private void OnDisable()
         {
-            m_gravityField.DeregisterVisualizer(this);
+            //m_gravityField.DeregisterVisualizer(this);
             Destroy(m_materialInstance);
             m_renderTexture.Release();
         }
@@ -166,14 +171,8 @@ namespace Ricercar.Gravity
             if (!enabled || m_computeFullFieldKernel < 0 || m_materialInstance == null)
                 return;
 
-            // todo: apparently you can create instances of compute shaders, do that, and then don't need to call this method every frame (only when it changes)
-
-            m_size = (m_canvas.transform as RectTransform).rect.width;
-            m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
-            m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
-
+            // only really need to do this when an attractor or this visualizer moves
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
-            m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
         }
 
         public Vector2 GetTopRight()
@@ -202,6 +201,10 @@ namespace Ricercar.Gravity
             m_size = m_canvasRectTransform.rect.width;
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
+
+            m_size = (m_canvas.transform as RectTransform).rect.width;
+            m_gravityFieldComputeShader?.SetVector("BottomLeft", m_bottomLeft);
+            m_gravityFieldComputeShader?.SetVector("TopRight", m_topRight);
         }
 
         private void OnGridScaleChanged()
