@@ -78,7 +78,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         BakedAttractorData data = BakedAttractors[j];
         float2 pivot = (globalOffset - data.position) * globalScalar;
 
-        result += CalculateGravity(BakedAttractorTextures, j, BakedAttractors[j], id.xy, globalScalar, pivot, position, 1);
+        result += CalculateGravity(BakedAttractorTextures, BakedAttractors[j], id.xy, globalScalar, pivot, position, 1);
 	}
 
     result.z /= validAttractors;
@@ -144,7 +144,7 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
         float2 origin = float2(data.size, data.size) * 0.5;
 
         // float3 CalculateGravity(Texture2DArray<float4> textures, int index, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
-        result += CalculateGravity(BakedAttractorTextures, j, data, position + origin, 1.0, -data.position, position, mass);
+        result += CalculateGravity(BakedAttractorTextures, data, position + origin, 1.0, -data.position, position, mass);
 	}
 
     PointForces[id.x] = result;

@@ -9,6 +9,7 @@ namespace Ricercar.Gravity
     {
         [SerializeField]
         private GravityMap m_gravityMap;
+        public GravityMap GravityMap => m_gravityMap;
 
         [SerializeField]
         protected GravityField m_gravityField;
@@ -58,7 +59,6 @@ namespace Ricercar.Gravity
         private Vector2 m_currentGravity;
         public Vector2 CurrentGravity => m_currentGravity;
 
-        public Texture2D Texture => m_gravityMap.Texture;
         public Vector2 CentreOfGravity => transform.TransformPoint(m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity));
         public float Rotation => m_transform.eulerAngles.z;
         public float Size => m_gravityMap.Size;
@@ -135,11 +135,47 @@ namespace Ricercar.Gravity
 
     public interface IBakedAttractor : IAttractor
     {
-        Texture2D Texture { get; }
+        GravityMap GravityMap { get; }
         Vector2 CentreOfGravity { get; }
         float Rotation { get; }
         float Size { get; }
         float Scale { get; }
         ExtrapolationSource ExtrapolationSource { get; }
     }
+
+    /// <summary>
+    /// Information about a baked attractor to be sent to the GPU.
+    /// </summary>
+    public struct BakedAttractorData
+    {
+        // 10 * 4
+        public const int Stride = 40;
+
+        public Vector2 position;
+        public int ignore;
+        public float mass;
+        public Vector2 centreOfGravity;
+        public float rotation;
+        public float size;
+        public float scale;
+        public int textureIndex;
+
+        public BakedAttractorData(IBakedAttractor attractor)
+        {
+            position = attractor.Position;
+            ignore = attractor.AffectsField ? 0 : 1;
+            mass = attractor.Mass;
+            centreOfGravity = attractor.ExtrapolationSource == ExtrapolationSource.CENTRE_OF_GRAVITY ? attractor.CentreOfGravity : attractor.Position;
+            rotation = attractor.Rotation;
+            size = attractor.Size;
+            scale = attractor.Scale;
+            textureIndex = -1;
+        }
+
+        public void SetTextureIndex(int index)
+        {
+            textureIndex = index;
+        }
+    }
+
 }

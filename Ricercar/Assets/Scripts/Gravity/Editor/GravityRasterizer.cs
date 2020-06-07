@@ -109,7 +109,7 @@ namespace Ricercar.Gravity
                     }
                 }
 
-                RenderTexture renderTexture = GravityField.CreateTempRenderTexture(GravityMap.SIZE, GravityMap.SIZE, Color.black, GravityField.GRAPHICS_FORMAT);
+                RenderTexture renderTexture = Utils.CreateTempRenderTexture(GravityMap.SIZE, GravityMap.SIZE, Color.black, GravityField.GRAPHICS_FORMAT);
                 GenerateGravityTexture(m_inputTexture, renderTexture, out m_centreOfGravity);
 
                 m_outputFinal = renderTexture.ToTexture2D();

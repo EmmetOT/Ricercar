@@ -78,6 +78,7 @@ struct BakedAttractorData
     float rotation;
     float size;
     float scale;
+    int textureIndex;
 };
 
 float2x2 GetRotationMatrix(float rotation)
@@ -150,7 +151,7 @@ float3 CalculateGravity(float2 to, float2 from, float massOne, float massTwo)
     return float3(gravityForce, towardsiness);
 }
 
-float3 CalculateGravity(Texture2DArray<float4> textures, int index, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
+float3 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
 {
     int doNotCount = data.ignore;
     float scale = data.scale;
@@ -161,7 +162,7 @@ float3 CalculateGravity(Texture2DArray<float4> textures, int index, BakedAttract
     float2 coord = Transform(uvPosition, origin - pivot, rotation, scaleSampler) + pivot;
 
     // first, we transform the texture and sample it to get the force "baked in"
-    float4 texData = SampleBilinear(textures, index, coord);
+    float4 texData = SampleBilinear(textures, data.textureIndex, coord);
         
     // mass has to be divided by square of scale to stay constant
     // - doubling the size of an object will quarter its density (in 2 dimensions)

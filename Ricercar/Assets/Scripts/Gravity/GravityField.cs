@@ -13,7 +13,6 @@ namespace Ricercar.Gravity
 
         private readonly List<IAttractor> m_attractors = new List<IAttractor>();
         private readonly List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
-        private readonly List<GravityVisualizer> m_visualizers = new List<GravityVisualizer>();
 
         [SerializeField]
         private ComputeShader m_gravityFieldComputeShader;
@@ -28,6 +27,8 @@ namespace Ricercar.Gravity
 
         private Texture2DArray m_bakedAttractorTextureArray;
         private readonly List<Texture2D> m_bakedAttractorTextureList = new List<Texture2D>();
+        private readonly Dictionary<int, int> m_bakedAttractorTextureGUIDToIndex = new Dictionary<int, int>();
+        private Texture2DArray m_emptyTextureArray;
 
         private ComputeBuffer m_pointInputBuffer;
         private ComputeBuffer m_bakedInputBuffer;
@@ -37,6 +38,14 @@ namespace Ricercar.Gravity
 
         private void Start()
         {
+            // exists solely to stop a complaint if we pass an empty one in
+            m_emptyTextureArray = new Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, 1, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            m_emptyTextureArray.Apply();
+
             m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputeForces");
             RefreshComputeBuffers();
         }
@@ -61,6 +70,7 @@ namespace Ricercar.Gravity
                     return;
 
                 m_bakedAttractors.Add(bakedAttractor);
+                BuildBakedAttractorTextureArray();
             }
             else
             {
@@ -78,7 +88,10 @@ namespace Ricercar.Gravity
             if (attractor is IBakedAttractor bakedAttractor)
             {
                 if (m_bakedAttractors.Remove(bakedAttractor))
+                {
+                    BuildBakedAttractorTextureArray();
                     RefreshComputeBuffers();
+                }
             }
             else
             {
@@ -86,21 +99,6 @@ namespace Ricercar.Gravity
                     RefreshComputeBuffers();
             }
         }
-
-        //public void RegisterVisualizer(GravityVisualizer visualizer)
-        //{
-        //    if (m_visualizers.Contains(visualizer))
-        //        return;
-
-        //    m_visualizers.Add(visualizer);
-        //    RefreshComputeBuffers();
-        //}
-
-        //public void DeregisterVisualizer(GravityVisualizer visualizer)
-        //{
-        //    if (m_visualizers.Remove(visualizer))
-        //        RefreshComputeBuffers();
-        //}
 
         private void RefreshComputeBuffers()
         {
@@ -116,35 +114,6 @@ namespace Ricercar.Gravity
             if (m_attractorCount == 0 && m_bakedAttractorCount == 0)
                 return;
 
-            m_bakedAttractorTextureList.Clear();
-
-            if (m_bakedAttractorCount > 0)
-            {
-                m_bakedAttractorTextureArray = new
-                    Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, m_bakedAttractorCount, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
-                {
-                    filterMode = FilterMode.Bilinear,
-                    wrapMode = TextureWrapMode.Clamp
-                };
-
-                for (int i = 0; i < m_bakedAttractorCount; i++)
-                {
-                    Debug.Log("Getting texture " + i + " from " + m_bakedAttractors[i].Texture.name);
-                    m_bakedAttractorTextureArray.SetPixels(m_bakedAttractors[i].Texture.GetPixels(), i, 0);
-                }
-            }
-            else
-            {
-                // exists solely to stop a complaint if we pass an empty one in. todo: cache this
-                m_bakedAttractorTextureArray = new Texture2DArray(GravityMap.SIZE, GravityMap.SIZE, 1, GRAPHICS_FORMAT, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
-                {
-                    filterMode = FilterMode.Bilinear,
-                    wrapMode = TextureWrapMode.Clamp
-                };
-            }
-
-            m_bakedAttractorTextureArray.Apply();
-
             m_forcesOutputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount + m_bakedAttractorCount), sizeof(float) * 2);
             m_pointInputBuffer = new ComputeBuffer(Mathf.Max(1, m_attractorCount), AttractorData.Stride);
             m_bakedInputBuffer = new ComputeBuffer(Mathf.Max(1, m_bakedAttractorCount), BakedAttractorData.Stride);
@@ -157,7 +126,6 @@ namespace Ricercar.Gravity
 
             Shader.SetGlobalBuffer("PointAttractors", m_pointInputBuffer);
             Shader.SetGlobalBuffer("BakedAttractors", m_bakedInputBuffer);
-            Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
 
             Shader.SetGlobalInt("PointCount", m_attractorCount);
             Shader.SetGlobalInt("BakedCount", m_bakedAttractorCount);
@@ -167,7 +135,42 @@ namespace Ricercar.Gravity
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
         }
 
-        private void ComputePointForces()
+        /// <summary>
+        /// To be called whenever a baked attractor is added or removed. First, generates a lookup from baked attractor
+        /// gravity map's guid to the index of its texture in a texture list. This system is in place to prevent
+        /// redundant texture information from being sent to the GPU.
+        /// 
+        /// Next, creates a texture array from only these unique textures.
+        /// </summary>
+        private void BuildBakedAttractorTextureArray()
+        {
+            // first, generate the lookup
+
+            m_bakedAttractorTextureGUIDToIndex.Clear();
+            m_bakedAttractorTextureList.Clear();
+
+            for (int i = 0; i < m_bakedAttractors.Count; i++)
+            {
+                if (!m_bakedAttractorTextureGUIDToIndex.ContainsKey(m_bakedAttractors[i].GravityMap.GUID))
+                {
+                    m_bakedAttractorTextureGUIDToIndex.Add(m_bakedAttractors[i].GravityMap.GUID, m_bakedAttractorTextureList.Count);
+                    m_bakedAttractorTextureList.Add(m_bakedAttractors[i].GravityMap.Texture);
+                }
+            }
+
+            if (m_bakedAttractorTextureList.Count > 0)
+            {
+                m_bakedAttractorTextureArray = Utils.CreateTextureArray(m_bakedAttractorTextureList, GravityMap.SIZE, GravityMap.SIZE, GRAPHICS_FORMAT);
+            }
+            else
+            {
+                m_bakedAttractorTextureArray = m_emptyTextureArray;
+            }
+
+            Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
+        }
+
+        private void SetAttractorData()
         {
             if (m_attractors.IsNullOrEmpty() && m_bakedAttractors.IsNullOrEmpty())
                 return;
@@ -179,11 +182,21 @@ namespace Ricercar.Gravity
                 m_pointInputData.Add(new AttractorData(m_attractors[i]));
 
             for (int i = 0; i < m_bakedAttractorCount; i++)
-                m_bakedInputData.Add(new BakedAttractorData(m_bakedAttractors[i]));
+            {
+                BakedAttractorData data = new BakedAttractorData(m_bakedAttractors[i]);
+
+                if (m_bakedAttractorTextureGUIDToIndex.TryGetValue(m_bakedAttractors[i].GravityMap.GUID, out int index))
+                    data.SetTextureIndex(index);
+
+                m_bakedInputData.Add(data);
+            }
 
             m_pointInputBuffer.SetData(m_pointInputData);
             m_bakedInputBuffer.SetData(m_bakedInputData);
+        }
 
+        private void ComputePointForces()
+        {
             m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, 1, 1);
             m_forcesOutputBuffer.GetData(m_attractorOutputData);
         }
@@ -216,7 +229,7 @@ namespace Ricercar.Gravity
             if (m_computePointForcesKernel < 0)
                 return;
 
-            ComputePointForces();
+            SetAttractorData();
         }
 
         private void FixedUpdate()
@@ -224,25 +237,8 @@ namespace Ricercar.Gravity
             if (m_computePointForcesKernel < 0)
                 return;
 
+            ComputePointForces();
             ApplyPointForces();
         }
-
-
-        public static RenderTexture CreateTempRenderTexture(int width, int height, Color? col = null, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
-        {
-            RenderTexture texture = RenderTexture.GetTemporary(width, height, 24);
-            texture.enableRandomWrite = true;
-
-            if (format != null)
-                texture.graphicsFormat = format.Value;
-
-            texture.Create();
-
-            if (col != null)
-                texture.FillWithColour(col.Value);
-
-            return texture;
-        }
-
     }
 }

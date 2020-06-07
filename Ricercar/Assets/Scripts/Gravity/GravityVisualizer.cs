@@ -117,7 +117,7 @@ namespace Ricercar.Gravity
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
 
-            m_renderTexture = GravityField.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
+            m_renderTexture = Utils.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
 
             m_gravityFieldComputeShader.SetTexture(m_computeFullFieldKernel, "GravityFieldOutputTexture", m_renderTexture);
 

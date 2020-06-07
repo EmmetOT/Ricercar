@@ -29,31 +29,6 @@ namespace Ricercar.Gravity
         Vector2 End { get; }
     }
 
-    public struct BakedAttractorData
-    {
-        // 9 * 4
-        public const int Stride = 36;
-
-        public Vector2 position;
-        public int ignore;
-        public float mass;
-        public Vector2 centreOfGravity;
-        public float rotation;
-        public float size;
-        public float scale;
-
-        public BakedAttractorData(IBakedAttractor attractor)
-        {
-            position = attractor.Position;
-            ignore = attractor.AffectsField ? 0 : 1;
-            mass = attractor.Mass;
-            centreOfGravity = attractor.ExtrapolationSource == ExtrapolationSource.CENTRE_OF_GRAVITY ? attractor.CentreOfGravity : attractor.Position;
-            rotation = attractor.Rotation;
-            size = attractor.Size;
-            scale = attractor.Scale;
-        }
-    }
-
     public struct AttractorData
     {
         // 11 * 4

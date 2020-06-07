@@ -160,6 +160,42 @@ namespace Ricercar
             return tex;
         }
 
+        public static RenderTexture CreateTempRenderTexture(int width, int height, Color? col = null, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
+        {
+            RenderTexture texture = RenderTexture.GetTemporary(width, height, 24);
+            texture.enableRandomWrite = true;
+
+            if (format != null)
+                texture.graphicsFormat = format.Value;
+
+            texture.Create();
+
+            if (col != null)
+                texture.FillWithColour(col.Value);
+
+            return texture;
+        }
+
+        public static Texture2DArray CreateTextureArray(IList<Texture2D> textures, int width, int height, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
+        {
+            Texture2DArray textureArray =
+                new Texture2DArray(width, height, textures.Count, format ?? textures[0].graphicsFormat, UnityEngine.Experimental.Rendering.TextureCreationFlags.None)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+
+
+            for (int i = 0; i < textures.Count; i++)
+            {
+                Graphics.CopyTexture(textures[i], 0, textureArray, i);
+            }
+
+            textureArray.Apply();
+
+            return textureArray;
+        }
+
         public static void FillWithColour(this RenderTexture renderTexture, Color colour)
         {
             RenderTexture active = RenderTexture.active;
