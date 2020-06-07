@@ -122,8 +122,6 @@ namespace Ricercar.Gravity
 
             // set global data (field and visualizers)
 
-            Debug.Log("Setting buffers.");
-
             Shader.SetGlobalBuffer("PointAttractors", m_pointInputBuffer);
             Shader.SetGlobalBuffer("BakedAttractors", m_bakedInputBuffer);
 
@@ -197,7 +195,7 @@ namespace Ricercar.Gravity
 
         private void ComputePointForces()
         {
-            m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount, 1, 1);
+            m_gravityFieldComputeShader.Dispatch(m_computePointForcesKernel, m_attractorCount + m_bakedAttractorCount, 1, 1);
             m_forcesOutputBuffer.GetData(m_attractorOutputData);
         }
 
