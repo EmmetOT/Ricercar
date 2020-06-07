@@ -1,4 +1,4 @@
-﻿using Obi;
+﻿//using Obi;
 using System.Collections;
 using System.Collections.Generic;
 using NaughtyAttributes;
@@ -10,8 +10,8 @@ namespace Ricercar
 {
     public class Car : MonoBehaviour
     {
-        [SerializeField]
-        private ObiSolver m_solver;
+        //[SerializeField]
+        //private ObiSolver m_solver;
 
         [SerializeField]
         private Wheel[] m_wheelPrefabs;
@@ -26,8 +26,8 @@ namespace Ricercar
         [SerializeField]
         private SimpleRigidbodyAttractor m_attractor;
 
-        [SerializeField]
-        private ObiCollider2D m_collider;
+        //[SerializeField]
+        //private ObiCollider2D m_collider;
 
         [SerializeField]
         private Material m_material;
@@ -48,7 +48,7 @@ namespace Ricercar
         [ReadOnly]
         private int m_currentWheelIndex = 0;
 
-        private ObiRopeBlueprint m_ropeBlueprint;
+        //private ObiRopeBlueprint m_ropeBlueprint;
 
         /// <summary>
         /// Enumerate all wheels that are at the active wheel index or are set to 'always active.'
@@ -95,7 +95,7 @@ namespace Ricercar
                 wheel.transform.localPosition = Vector3.zero;
 
                 wheel.Initialize(m_wheels[i].ComponentCount, m_wheels[i].ComponentProximity, m_selectedColour,
-                    m_unselectedColour, i, m_solver, m_material, m_attractor, m_collider);
+                    m_unselectedColour, i/*, m_solver*/, m_material, m_attractor/*, m_collider*/);
 
                 wheel.SetSelected(i == m_currentWheelIndex);
 
@@ -189,10 +189,10 @@ namespace Ricercar
             m_secondaryFire = false;
         }
 
-        private void OnDestroy()
-        {
-            DestroyImmediate(m_ropeBlueprint);
-        }
+        //private void OnDestroy()
+        //{
+        //    DestroyImmediate(m_ropeBlueprint);
+        //}
 
         public void IncrementCurrentWheel()
         {

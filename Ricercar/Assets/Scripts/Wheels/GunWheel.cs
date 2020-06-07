@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using Obi;
+//using Obi;
 using UnityEngine;
 using NaughtyAttributes;
 using Ricercar.Gravity;
@@ -24,9 +24,9 @@ namespace Ricercar
         
         protected override bool CanAim => base.CanAim && !IsSecondaryFireHeld;
 
-        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, IAttractor attractor, ObiCollider2D parentCollider)
+        public override void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index/*, ObiSolver solver*/, Material material, IAttractor attractor/*, ObiCollider2D parentCollider*/)
         {
-            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index, solver, material, attractor, parentCollider);
+            base.Initialize(componentCount, componentProximity, selectedColour, unselectedColour, index/*, solver*/, material, attractor/*, parentCollider*/);
             
             if (m_gunPool == null)
                 m_gunPool = new Pool<Gun>(m_gunPrefab);

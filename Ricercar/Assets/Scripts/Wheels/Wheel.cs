@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
-using Obi;
+//using Obi;
 using Ricercar.Gravity;
 
 namespace Ricercar
@@ -76,13 +76,13 @@ namespace Ricercar
         [SerializeField]
         protected LayerMask m_environmentLayerMask;
 
-        protected ObiSolver m_solver;
+        //protected ObiSolver m_solver;
 
         protected Material m_material;
 
         protected IAttractor m_attractor;
 
-        protected ObiCollider2D m_parentCollider;
+        //protected ObiCollider2D m_parentCollider;
 
         protected ContactFilter2D m_raycastFilter;
         protected readonly RaycastHit2D[] m_raycastHits = new RaycastHit2D[1];
@@ -112,7 +112,7 @@ namespace Ricercar
 
         public virtual void OnScroll(float delta) { }
 
-        public virtual void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index, ObiSolver solver, Material material, IAttractor attractor, ObiCollider2D parentCollider)
+        public virtual void Initialize(int componentCount, float componentProximity, Color selectedColour, Color unselectedColour, int index/*, ObiSolver solver*/, Material material, IAttractor attractor/*, ObiCollider2D parentCollider*/)
         {
             CurrentAim = 0f;
 
@@ -122,7 +122,7 @@ namespace Ricercar
 
             m_transform = transform;
 
-            m_solver = solver;
+            //m_solver = solver;
 
             m_material = material;
 
@@ -131,7 +131,7 @@ namespace Ricercar
 
             m_wheelSpriteRenderer.sprite = m_wheelSprites[index];
             m_attractor = attractor;
-            m_parentCollider = parentCollider;
+            //m_parentCollider = parentCollider;
             
             m_raycastFilter = new ContactFilter2D
             {
