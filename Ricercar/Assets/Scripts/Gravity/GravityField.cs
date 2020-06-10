@@ -253,5 +253,15 @@ namespace Ricercar.Gravity
             GetForces();
             ApplyPointForces();
         }
+
+        /// <summary>
+        /// Assuming the given gravity direction represents down, and the given vector
+        /// is a direction in world space, rotate it to match the gravity direction.
+        /// </summary>
+        public static Vector2 ConvertDirectionToGravitySpace(Vector2 gravityDirection, Vector2 vec)
+        {
+            return Quaternion.FromToRotation(Vector2.down, gravityDirection) * vec;
+        }
+
     }
 }

@@ -8,8 +8,18 @@ namespace Ricercar
 {
     public class CameraController : MonoBehaviour
     {
+        private enum FollowMode { TRANSFORM, ATTRACTOR }
+
         [SerializeField]
-        private Attractor m_followAttractor;
+        private FollowMode m_followMode = FollowMode.TRANSFORM;
+
+        [SerializeField]
+        [ShowIf("IsFollowingTransform")]
+        private Transform m_followTransform;
+
+        [SerializeField]
+        [HideIf("IsFollowingTransform")]
+        private SimpleRigidbodyAttractor m_followAttractor;
 
         [SerializeField]
         [MinValue(0f)]
@@ -35,14 +45,16 @@ namespace Ricercar
 
         private void LateUpdate()
         {
-            if (m_followAttractor == null)
+            if ((m_followMode == FollowMode.TRANSFORM && m_followTransform == null) || (m_followMode == FollowMode.ATTRACTOR && m_followAttractor == null))
                 return;
 
-            m_transform.position = Vector3.Lerp(m_transform.position, m_followAttractor.transform.position, m_followSpeed * Time.deltaTime);
+            Vector3 pos = m_followMode == FollowMode.TRANSFORM ? m_followTransform.position : m_followAttractor.transform.position;
+
+            m_transform.position = Vector3.Lerp(m_transform.position, pos, m_followSpeed * Time.deltaTime);
 
             if (m_rotateWithGravity)
             {
-                Vector2 gravity = m_followAttractor.CurrentGravity;//GravityField.GetGravity(m_transform.position);
+                Vector2 gravity = m_followMode == FollowMode.TRANSFORM ? Physics2D.gravity : m_followAttractor.CurrentGravity;
 
                 if (gravity.IsZero())
                     gravity = Vector2.down;
@@ -50,6 +62,8 @@ namespace Ricercar
                 m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -gravity.normalized), m_rotationSpeed * Time.deltaTime);
             }
         }
+
+        private bool IsFollowingTransform() => m_followMode == FollowMode.TRANSFORM;
     }
 
 }

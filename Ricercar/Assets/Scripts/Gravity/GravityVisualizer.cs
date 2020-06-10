@@ -76,6 +76,11 @@ namespace Ricercar.Gravity
         private float m_gridScale = 0.2f;
 
         [SerializeField]
+        [MinValue(1f)]
+        [OnValueChanged("OnMoved")]
+        private float m_size = 256f;
+
+        [SerializeField]
         private PowerOfTwoResolution m_gravitySampleResolution = PowerOfTwoResolution._256;
 
         [SerializeField]
@@ -84,10 +89,6 @@ namespace Ricercar.Gravity
         [SerializeField]
         [OnValueChanged("OnColourModeChanged")]
         private ColourMode m_colourMode;
-
-        [SerializeField]
-        [ReadOnly]
-        private float m_size;
 
         [SerializeField]
         [ReadOnly]
@@ -111,7 +112,6 @@ namespace Ricercar.Gravity
 
             m_transform = transform;
             m_canvasRectTransform = m_canvas.transform as RectTransform;
-            m_size = m_canvasRectTransform.rect.width;
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
 
@@ -132,7 +132,6 @@ namespace Ricercar.Gravity
             else
                 m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
 
-            m_size = (m_canvas.transform as RectTransform).rect.width;
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
 
@@ -198,11 +197,10 @@ namespace Ricercar.Gravity
 
         private void OnMoved()
         {
-            m_size = m_canvasRectTransform.rect.width;
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
 
-            m_size = (m_canvas.transform as RectTransform).rect.width;
+            m_canvasRectTransform.sizeDelta = Vector2.one * m_size;
             m_gravityFieldComputeShader?.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader?.SetVector("TopRight", m_topRight);
         }

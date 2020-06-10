@@ -23,6 +23,9 @@ namespace Ricercar.Gravity
         public bool AffectsField => m_affectsField;
 
         [SerializeField]
+        private bool m_drawGizmos = true;
+
+        [SerializeField]
         private Vector2 m_startingForce;
 
         [SerializeField]
@@ -118,6 +121,9 @@ namespace Ricercar.Gravity
 #if UNITY_EDITOR
         protected virtual void OnDrawGizmosSelected()
         {
+            if (!m_drawGizmos)
+                return;
+
             if (m_isShell)
             {
                 Handles.color = Color.white;
