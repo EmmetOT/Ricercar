@@ -32,12 +32,6 @@ namespace Ricercar.Character
 
         public void ManualFixedUpdate()
         {
-            //if (!m_moveDirection.IsZero())
-            //{
-            //    OnMoveInput?.Invoke(m_moveDirection);
-            //    m_moveDirection = Vector2.zero;
-            //}
-
             if (m_jumpFlag)
             {
                 OnJumpInput?.Invoke();
@@ -46,6 +40,5 @@ namespace Ricercar.Character
         }
 
         public System.Action OnJumpInput;
-        public System.Action<Vector2> OnMoveInput;
     }
 }

@@ -7,6 +7,11 @@ using UnityEditor;
 
 namespace Ricercar.Character
 {
+    /// <summary>
+    /// This is the controller for a 2D character. It is strongly based on Catlike Coding's movement
+    /// tutorial, but adapted for 2D and with a variable gravity direction. The input elements have also
+    /// been pulled into a separate script.
+    /// </summary>
     public class CharacterController : MonoBehaviour
     {
         [SerializeField]
@@ -38,9 +43,16 @@ namespace Ricercar.Character
         [SerializeField]
         [Range(0f, 90f)]
         [BoxGroup("Controls")]
-        private float m_maxGroundAngle;
+        private float m_maxGroundAngle = 25f;
 
         private float m_minGroundDotProduct;
+
+        [SerializeField]
+        [Range(0f, 90f)]
+        [BoxGroup("Controls")]
+        private float m_maxStairsAngle = 50f;
+
+        private float m_minStairsDotProduct;
 
         [SerializeField]
         [MinValue(0f)]
@@ -53,9 +65,36 @@ namespace Ricercar.Character
         private int m_maxAirJumps = 0;
 
         [SerializeField]
+        [MinValue(0f)]
+        [BoxGroup("Controls")]
+        private float m_maxSnapSpeed = 5f;
+
+        [SerializeField]
+        [MinValue(0f)]
+        [BoxGroup("Controls")]
+        private float m_groundProbeDistance = 1f;
+
+        [SerializeField]
+        [BoxGroup("Controls")]
+        private LayerMask m_groundProbeLayerMask;
+
+        [SerializeField]
+        [BoxGroup("Controls")]
+        private LayerMask m_stairsProbeLayerMask;
+
+        [SerializeField]
         [ReadOnly]
         [BoxGroup("State")]
-        private bool m_isGrounded;
+        private int m_groundContactCount;
+
+        public bool IsGrounded => m_groundContactCount > 0;
+
+        [SerializeField]
+        [ReadOnly]
+        [BoxGroup("State")]
+        private int m_steepContactCount;
+
+        public bool IsTouchingSteep => m_steepContactCount > 0;
 
         [SerializeField]
         [ReadOnly]
@@ -70,7 +109,22 @@ namespace Ricercar.Character
         [SerializeField]
         [ReadOnly]
         [BoxGroup("State")]
-        private Vector2 m_currentContactNormal;
+        private Vector2 m_currentGroundNormal;
+
+        [SerializeField]
+        [ReadOnly]
+        [BoxGroup("State")]
+        private Vector2 m_currentSteepNormal;
+
+        [SerializeField]
+        [ReadOnly]
+        [BoxGroup("State")]
+        private int m_stepsSinceLastGrounded = 0;
+
+        [SerializeField]
+        [ReadOnly]
+        [BoxGroup("State")]
+        private int m_stepsSinceLastJump = 0;
 
         [SerializeField]
         [ReadOnly]
@@ -79,6 +133,8 @@ namespace Ricercar.Character
 
         private Transform m_transform;
 
+        public Vector2 CurrentGravity => m_attractor == null ? Physics2D.gravity : m_attractor.CurrentGravity;
+        public float GravityMagnitude => CurrentGravity.magnitude;
         public Vector2 Up => m_attractor == null ? Vector2.up : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.up);
         public Vector2 Down => m_attractor == null ? Vector2.down : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.down);
         public Vector2 Left => m_attractor == null ? Vector2.left : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.left);
@@ -87,11 +143,13 @@ namespace Ricercar.Character
         private void OnValidate()
         {
             m_minGroundDotProduct = Mathf.Cos(m_maxGroundAngle * Mathf.Deg2Rad);
+            m_minStairsDotProduct = Mathf.Cos(m_maxStairsAngle * Mathf.Deg2Rad);
         }
 
         private void OnEnable()
         {
             m_minGroundDotProduct = Mathf.Cos(m_maxGroundAngle * Mathf.Deg2Rad);
+            m_minStairsDotProduct = Mathf.Cos(m_maxStairsAngle * Mathf.Deg2Rad);
 
             m_transform = transform;
 
@@ -111,68 +169,87 @@ namespace Ricercar.Character
 
         private void UpdateState()
         {
+            ++m_stepsSinceLastGrounded;
+            ++m_stepsSinceLastJump;
+
             m_currentVelocity = m_rigidbody.velocity;
 
-            if (m_isGrounded)
+            if (IsGrounded || SnapToGround() || CheckSteepContacts())
             {
-                m_jumps = 0;
+                m_stepsSinceLastGrounded = 0;
+
+                if (m_stepsSinceLastJump > 1)
+                    m_jumps = 0;
             }
             else
             {
-                // TODO: generalize for any gravity direction
-                m_currentContactNormal = Vector2.up;
+                m_currentGroundNormal = Up;
             }
         }
 
         private void ResetState()
         {
-            m_isGrounded = false;
-            m_currentContactNormal = Vector2.zero;
+            m_groundContactCount = 0;
+            m_steepContactCount = 0;
+            m_currentGroundNormal = Vector2.zero;
+            m_currentSteepNormal = Vector2.zero;
         }
 
         private void FixedUpdate()
         {
             UpdateState();
 
-            // note that all the below takes place in "normal gravity space"
-            // and that transformations will need to be added from and then back to the 
-            // distorted gravity
-            // (adapted from catlike coding)
-            // TODO: generalize for any gravity direction
-
-            //float maxSpeedChange = (m_isGrounded ? m_maxAcceleration : m_maxAirborneAcceleration) * Time.fixedDeltaTime;
-            //m_currentVelocity.x = Mathf.MoveTowards(m_currentVelocity.x, m_desiredVelocity.x, maxSpeedChange);
-
-            //if (!m_isGrounded)
-            //{
-            //    Debug.Log("Speed change = " + maxSpeedChange);
-            //}
-
-            AdjustVelocityOriginal();
+            AdjustVelocity();
 
             m_input.ManualFixedUpdate();
 
+            m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
+
             m_rigidbody.velocity = m_currentVelocity;
+            m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
 
             ResetState();
         }
 
         private void OnJumpInput()
         {
-            if (m_isGrounded || m_jumps < m_maxAirJumps)
+            Vector2 jumpDirection;
+
+            if (IsGrounded)
             {
-                ++m_jumps;
-
-                // TODO: generalize for any gravity direction
-                float jumpSpeed = Mathf.Sqrt(-2f * Physics.gravity.y * m_jumpHeight);
-
-                float alignedSpeed = Vector3.Dot(m_currentVelocity, m_currentContactNormal);
-
-                if (alignedSpeed > 0f)
-                    jumpSpeed = Mathf.Max(jumpSpeed - alignedSpeed, 0f);
-
-                m_currentVelocity += m_currentContactNormal * jumpSpeed;
+                jumpDirection = m_currentGroundNormal;
             }
+            else if (IsTouchingSteep)
+            {
+                jumpDirection = m_currentSteepNormal;
+                m_jumps = 0;
+            }
+            else if (m_maxAirJumps > 0 && m_jumps <= m_maxAirJumps)
+            {
+                m_jumps = Mathf.Max(1, m_jumps);
+
+                jumpDirection = m_currentGroundNormal;
+            }
+            else
+            {
+                return;
+            }
+
+            ++m_jumps;
+
+            m_stepsSinceLastJump = 0;
+
+            float jumpSpeed = Mathf.Sqrt(2f * GravityMagnitude * m_jumpHeight);
+
+            // this line introduces an upward bias to jumps, which improves wall jumping
+            jumpDirection = (jumpDirection + Up).normalized;
+
+            float alignedSpeed = Vector3.Dot(m_currentVelocity, jumpDirection);
+
+            if (alignedSpeed > 0f)
+                jumpSpeed = Mathf.Max(jumpSpeed - alignedSpeed, 0f);
+
+            m_currentVelocity += jumpDirection * jumpSpeed;
         }
 
         private void OnCollisionStay2D(Collision2D collision)
@@ -187,67 +264,112 @@ namespace Ricercar.Character
 
         private void EvaluateCollision(Collision2D collision)
         {
+            float minDot = GetMinDot(collision.gameObject.layer);
+
             for (int i = 0; i < collision.contactCount; i++)
             {
-                // TODO: generalize for any gravity direction
                 Vector2 normal = collision.GetContact(i).normal;
-                if (normal.y >= m_minGroundDotProduct)
+                float upDot = Vector3.Dot(Up, normal);
+
+                if (upDot >= minDot)
                 {
-                    m_isGrounded = true;
-                    m_currentContactNormal += normal;
+                    ++m_groundContactCount;
+                    m_currentGroundNormal += normal;
+                }
+                else if (upDot > -0.01f)
+                {
+                    ++m_steepContactCount;
+                    m_currentSteepNormal += normal;
                 }
             }
 
-            if (collision.contactCount > 0)
-                m_currentContactNormal /= collision.contactCount;
+            if (m_groundContactCount > 0)
+                m_currentGroundNormal /= m_groundContactCount;
 
-            if (collision.contactCount > 1)
-                Debug.Log("Greater than 1!");
+            if (m_steepContactCount > 0)
+                m_currentSteepNormal /= m_steepContactCount;
         }
 
         /// <summary>
         /// Given a direction vector, project it so that it's aligned with whatever
         /// plane the character is standing on.
         /// </summary>
-        private Vector2 ProjectOnContactPlane(Vector2 vector)
+        private Vector2 ProjectDirectionOnPlane(Vector2 direction, Vector2 normal)
         {
-            return vector - m_currentContactNormal * Vector2.Dot(vector, m_currentContactNormal);
+            return (direction - normal * Vector2.Dot(direction, normal)).normalized;
         }
 
         private void AdjustVelocity()
         {
-            // TODO: generalize for any gravity direction
+            // problem: while airborne, m_desiredVelocity.x goes to zero, so any horizontal movement is quickly removed
+            // solution: prevent this velocity adjustment while the character is airborne and there is no input
+            if (!IsGrounded && m_desiredVelocity.IsZero())
+                return;
 
-            float maxSpeedChange = (m_isGrounded ? m_maxAcceleration : m_maxAirborneAcceleration) * Time.deltaTime;
-
-            // gives the new "right" direction on the current ground
-            Vector2 xAxis = ProjectOnContactPlane(Vector2.right).normalized;
-            Vector2 yAxis = ProjectOnContactPlane(Vector2.up).normalized;
-
-            Vector2 desiredVelocity = Quaternion.FromToRotation(Vector2.right, xAxis) * m_desiredVelocity;
-
-            float currentX = Vector3.Dot(m_currentVelocity, xAxis);
-            float currentY = Vector3.Dot(m_currentVelocity, yAxis);
-
-            float newX = Mathf.MoveTowards(currentX, desiredVelocity.x, maxSpeedChange);
-            float newY = Mathf.MoveTowards(currentY, desiredVelocity.y, maxSpeedChange);
-
-            //m_currentVelocity = Vector2.MoveTowards(m_currentVelocity, desiredVelocity, maxSpeedChange);
-
-            m_currentVelocity += xAxis * (newX - currentX) + yAxis * (newY - currentY);
-        }
-
-        private void AdjustVelocityOriginal()
-        {
-            Vector2 xAxis = ProjectOnContactPlane(Vector2.right).normalized;
+            Vector2 xAxis = ProjectDirectionOnPlane(Right, m_currentGroundNormal);
             float currentX = Vector2.Dot(m_currentVelocity, xAxis);
 
-            float maxSpeedChange = (m_isGrounded ? m_maxAcceleration : m_maxAirborneAcceleration) * Time.deltaTime;
+            float maxSpeedChange = (IsGrounded ? m_maxAcceleration : m_maxAirborneAcceleration) * Time.deltaTime;
 
-            // problem: while airborne, desiredVelocity.x goes to zero, so any horizontal movement is quickly removed
             float newX = Mathf.MoveTowards(currentX, m_desiredVelocity.x, maxSpeedChange);
 
             m_currentVelocity += xAxis * (newX - currentX);
+        }
+
+        private bool SnapToGround()
+        {
+            if (m_stepsSinceLastGrounded > 1 || m_stepsSinceLastJump <= 2)
+                return false;
+
+            float speed = m_currentVelocity.magnitude;
+
+            if (speed > m_maxSnapSpeed)
+                return false;
+
+            RaycastHit2D hit = Physics2D.Raycast(m_rigidbody.position, Down, m_groundProbeDistance, m_groundProbeLayerMask, -Mathf.Infinity);
+
+            if (hit.collider == null)
+                return false;
+
+            float upDot = Vector2.Dot(Up, hit.normal);
+            if (upDot < GetMinDot(hit.collider.gameObject.layer))
+                return false;
+
+            // we have just left the ground. set the velocity to snap us back down
+
+            m_groundContactCount = 1;
+            m_currentGroundNormal = hit.normal;
+
+            float dot = Vector2.Dot(m_currentVelocity, hit.normal);
+
+            // only do this when dot product is > 0, else it would slow us down not speed us up towards the ground
+            if (dot > 0f)
+                m_currentVelocity = (m_currentVelocity - m_currentGroundNormal * dot).normalized * speed;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Get the appropriate minimum dot product for the given layer.
+        /// </summary>
+        float GetMinDot(int layer)
+        {
+            return ((m_stairsProbeLayerMask & (1 << layer)) == 0) ? m_minGroundDotProduct : m_minStairsDotProduct;
+        }
+
+        /// <summary>
+        /// This method converts walls being touched into "virtual ground" in case th player ends up caught between walls with no ground below them.
+        /// </summary>
+        private bool CheckSteepContacts()
+        {
+            if (m_steepContactCount > 1 && Vector2.Dot(Up, m_currentSteepNormal) >= m_minGroundDotProduct)
+            {
+                m_groundContactCount = 1;
+                m_currentGroundNormal = m_currentSteepNormal;
+                return true;
+            }
+
+            return false;
         }
 
         private void OnDrawGizmos()

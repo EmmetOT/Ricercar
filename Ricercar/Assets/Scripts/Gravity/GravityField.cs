@@ -132,6 +132,9 @@ namespace Ricercar.Gravity
             Shader.SetGlobalInt("PointCount", m_attractorCount);
             Shader.SetGlobalInt("BakedCount", m_bakedAttractorCount);
 
+            if (m_bakedAttractorCount == 0)
+                Shader.SetGlobalTexture("BakedAttractorTextures", m_emptyTextureArray);
+
             // set field only data
 
             m_gravityFieldComputeShader.SetBuffer(m_computePointForcesKernel, "PointForces", m_forcesOutputBuffer);
@@ -211,7 +214,12 @@ namespace Ricercar.Gravity
 
         private void OnAsyncGPUReadbackReceived(AsyncGPUReadbackRequest result)
         {
-            result.GetData<Vector2>().CopyTo(m_attractorOutputData);
+            Unity.Collections.NativeArray<Vector2> output = result.GetData<Vector2>();
+
+            if (output.Count() != m_attractorOutputData.Length)
+                return;
+
+            output.CopyTo(m_attractorOutputData);
         }
 
         private void ApplyPointForces()
