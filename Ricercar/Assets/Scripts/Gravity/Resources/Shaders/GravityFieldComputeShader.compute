@@ -81,7 +81,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         result += CalculateGravity(BakedAttractorTextures, BakedAttractors[j], id.xy, globalScalar, pivot, position, 1);
 	}
 
-    result.z /= validAttractors;
+    //result.z /= validAttractors;
     
     GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
 }
@@ -129,7 +129,8 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
         // force of gravity approaches zero 
 
         float distance = length(otherPosition - position);
-        float shellGravity = lerp(0, data.surfaceGravityForce * mass, distance / max(data.radius, EPSILON));
+
+        float shellGravity = lerp(0, data.surfaceGravityForce, distance / max(data.radius, EPSILON)) * mass;
         int insideShell = when_lt(distance, data.radius);
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
@@ -143,8 +144,8 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
         float2 origin = float2(data.size, data.size) * 0.5;
 
-        // float3 CalculateGravity(Texture2DArray<float4> textures, int index, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
-        result += CalculateGravity(BakedAttractorTextures, data, position + origin, 1.0, -data.position, position, mass);
+        // float3 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
+        result += CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, mass);
 	}
 
     PointForces[id.x] = result;

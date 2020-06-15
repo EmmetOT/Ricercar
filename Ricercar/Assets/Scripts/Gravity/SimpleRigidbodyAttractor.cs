@@ -23,6 +23,9 @@ namespace Ricercar.Gravity
         public bool AffectsField => m_affectsField;
 
         [SerializeField]
+        private bool m_useRigidbodyPosition = false;
+
+        [SerializeField]
         private bool m_drawGizmos = true;
 
         [SerializeField]
@@ -59,7 +62,7 @@ namespace Ricercar.Gravity
         private Transform m_transform;
 
         public float Mass => m_useRigidbodyMass ? m_rigidbody.mass : m_mass;
-        public Vector2 Position => m_transform.position;
+        public Vector2 Position => m_useRigidbodyPosition ? m_rigidbody.position : (Vector2)m_transform.position;
         public Vector2 Velocity => m_rigidbody.velocity;
 
         [SerializeField]
@@ -97,7 +100,7 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            m_rigidbody.AddForce(m_currentGravity * Time.fixedDeltaTime);
+            m_rigidbody.AddForce(m_currentGravity * m_gravityField.GravityDeltaTime);
         }
 
         [Button("Calculate Surface Gravity")]

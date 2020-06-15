@@ -83,52 +83,52 @@ namespace Ricercar.Character
         private LayerMask m_stairsProbeLayerMask;
 
         [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private int m_groundContactCount;
 
         public bool IsGrounded => m_groundContactCount > 0;
 
         [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private int m_steepContactCount;
 
         public bool IsTouchingSteep => m_steepContactCount > 0;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private Vector2 m_currentVelocity;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private Vector2 m_desiredVelocity;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private Vector2 m_currentGroundNormal;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private Vector2 m_currentSteepNormal;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private int m_stepsSinceLastGrounded = 0;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private int m_stepsSinceLastJump = 0;
 
-        [SerializeField]
-        [ReadOnly]
-        [BoxGroup("State")]
+        //[SerializeField]
+        //[ReadOnly]
+        //[BoxGroup("State")]
         private int m_jumps = 0;
 
         private Transform m_transform;
@@ -203,16 +203,43 @@ namespace Ricercar.Character
 
             m_input.ManualFixedUpdate();
 
-            m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
+            m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
+            //m_rigidbody.angularVelocity = 0f;
+
+            //m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
+
+            //m_rigidbody.velocity += (CurrentGravity * Time.fixedDeltaTime) * Time.fixedDeltaTime;
 
             m_rigidbody.velocity = m_currentVelocity;
-            m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
+
+            // this works. how to phrase it in terms of velocity?
+            m_rigidbody.AddForce(CurrentGravity * Time.fixedDeltaTime);
 
             ResetState();
         }
 
+        //private void FixedUpdate()
+        //{
+        //    UpdateState();
+
+        //    AdjustVelocity();
+
+        //    m_input.ManualFixedUpdate();
+
+        //    m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
+        //    m_rigidbody.angularVelocity = 0f;
+
+        //    m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
+
+        //    m_rigidbody.velocity = m_currentVelocity;
+
+        //    ResetState();
+        //}
+
         private void OnJumpInput()
         {
+            //return;
+
             Vector2 jumpDirection;
 
             if (IsGrounded)
@@ -301,6 +328,8 @@ namespace Ricercar.Character
 
         private void AdjustVelocity()
         {
+            //return;
+
             // problem: while airborne, m_desiredVelocity.x goes to zero, so any horizontal movement is quickly removed
             // solution: prevent this velocity adjustment while the character is airborne and there is no input
             if (!IsGrounded && m_desiredVelocity.IsZero())
@@ -318,6 +347,8 @@ namespace Ricercar.Character
 
         private bool SnapToGround()
         {
+            //return false;
+
             if (m_stepsSinceLastGrounded > 1 || m_stepsSinceLastJump <= 2)
                 return false;
 
@@ -372,10 +403,12 @@ namespace Ricercar.Character
             return false;
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             Gizmos.color = Color.red;
             Gizmos.DrawLine(transform.position, transform.position + (Vector3)(m_currentVelocity.normalized * 2f));
         }
+#endif
     }
 }

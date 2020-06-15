@@ -40,6 +40,21 @@ namespace Ricercar.Gravity
         [SerializeField]
         private bool m_runAsync = false;
 
+        private float m_gravityUpdateTime;
+
+        [SerializeField]
+        private float m_gravityUpdateDeltaTime;
+        public float GravityDeltaTime
+        {
+            get
+            {
+                if (!m_runAsync)
+                    return Time.fixedDeltaTime;
+
+                return m_gravityUpdateDeltaTime;
+            }
+        }
+
         private void Start()
         {
             // exists solely to stop a complaint if we pass an empty one in
@@ -52,6 +67,8 @@ namespace Ricercar.Gravity
 
             m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputeForces");
             RefreshComputeBuffers();
+
+            m_gravityUpdateTime = Time.time;
         }
 
         private void OnDisable()
@@ -212,8 +229,19 @@ namespace Ricercar.Gravity
                 m_forcesOutputBuffer.GetData(m_attractorOutputData);
         }
 
+        /// <summary>
+        /// TODO:
+        /// 
+        /// Running Async will not produce perfect results, although it will be much faster.
+        /// The problem is almost certainly due to the fact that the async updates and physics updates go "out of sync"
+        /// and the async updates arent as regular as the physics updates.
+        /// </summary>
         private void OnAsyncGPUReadbackReceived(AsyncGPUReadbackRequest result)
         {
+            float time = Time.time;
+            m_gravityUpdateDeltaTime = time - m_gravityUpdateTime;
+            m_gravityUpdateTime = time;
+
             Unity.Collections.NativeArray<Vector2> output = result.GetData<Vector2>();
 
             if (output.Count() != m_attractorOutputData.Length)
