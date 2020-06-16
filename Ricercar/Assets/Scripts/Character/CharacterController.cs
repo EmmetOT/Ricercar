@@ -204,11 +204,9 @@ namespace Ricercar.Character
             m_input.ManualFixedUpdate();
 
             m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
-            //m_rigidbody.angularVelocity = 0f;
+            m_rigidbody.angularVelocity = 0f;
 
             //m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
-
-            //m_rigidbody.velocity += (CurrentGravity * Time.fixedDeltaTime) * Time.fixedDeltaTime;
 
             m_rigidbody.velocity = m_currentVelocity;
 
@@ -238,8 +236,6 @@ namespace Ricercar.Character
 
         private void OnJumpInput()
         {
-            //return;
-
             Vector2 jumpDirection;
 
             if (IsGrounded)
@@ -271,12 +267,14 @@ namespace Ricercar.Character
             // this line introduces an upward bias to jumps, which improves wall jumping
             jumpDirection = (jumpDirection + Up).normalized;
 
+            // how much does the calculated jump direction line up with the current velocity?
+            // (does not include gravity now, which might break this)
             float alignedSpeed = Vector3.Dot(m_currentVelocity, jumpDirection);
 
             if (alignedSpeed > 0f)
                 jumpSpeed = Mathf.Max(jumpSpeed - alignedSpeed, 0f);
 
-            m_currentVelocity += jumpDirection * jumpSpeed;
+            m_currentVelocity += jumpDirection * jumpSpeed * Time.fixedDeltaTime;
         }
 
         private void OnCollisionStay2D(Collision2D collision)
@@ -328,8 +326,6 @@ namespace Ricercar.Character
 
         private void AdjustVelocity()
         {
-            //return;
-
             // problem: while airborne, m_desiredVelocity.x goes to zero, so any horizontal movement is quickly removed
             // solution: prevent this velocity adjustment while the character is airborne and there is no input
             if (!IsGrounded && m_desiredVelocity.IsZero())
