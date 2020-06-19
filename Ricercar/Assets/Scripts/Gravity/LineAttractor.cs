@@ -88,6 +88,14 @@ namespace Ricercar.Gravity
             Debug.Log(new AttractorData(this));
         }
 
+        public void SetMass(float mass)
+        {
+            m_mass = mass;
+
+            if (m_useRigidbodyMass)
+                m_rigidbody.mass = Mathf.Abs(mass);
+        }
+
 
 #if UNITY_EDITOR
         protected virtual void OnDrawGizmos()

@@ -643,7 +643,7 @@ namespace Ricercar
         }
 
         /// <summary>
-        /// Provides the position where the ray from the input cursor hits y = 0.
+        /// Provides the position where the ray from the input cursor hits z = 0.
         /// </summary>
         public static Vector3 GetMousePos2D(Camera camera)
         {

@@ -15,6 +15,7 @@ namespace Ricercar.Gravity
         bool AffectsField { get; }
 
         void SetGravity(Vector2 gravity);
+        void SetMass(float mass);
     }
 
     public interface ISimpleAttractor : IAttractor
@@ -173,6 +174,14 @@ namespace Ricercar.Gravity
             }    
 
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
+        }
+
+        public void SetMass(float mass)
+        {
+            m_mass = mass;
+
+            if (m_useRigidbodyMass)
+                m_rigidbody.mass = Mathf.Abs(mass);
         }
 
         //        /// <summary>

@@ -110,6 +110,11 @@ namespace Ricercar.Gravity
             m_transform.position += (Vector3)m_velocity * Time.deltaTime;
         }
 
+        public void SetMass(float mass)
+        {
+            m_mass = mass;
+        }
+
         [Button]
         public void CalculateSurfaceGravity()
         {

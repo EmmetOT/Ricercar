@@ -96,6 +96,14 @@ namespace Ricercar.Gravity
             m_transform.localScale = Vector3.one * m_scale;
         }
 
+        public void SetMass(float mass)
+        {
+            m_mass = mass;
+
+            if (m_useRigidbodyMass)
+                m_rigidbody.mass = Mathf.Abs(mass);
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
@@ -124,6 +132,7 @@ namespace Ricercar.Gravity
 
             Gizmos.matrix = matrix;
         }
+
 #endif
     }
 

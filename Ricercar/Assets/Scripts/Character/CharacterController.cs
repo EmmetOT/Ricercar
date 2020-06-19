@@ -321,8 +321,6 @@ namespace Ricercar.Character
 
         private bool SnapToGround()
         {
-            //return false;
-
             if (m_stepsSinceLastGrounded > 1 || m_stepsSinceLastJump <= 2)
                 return false;
 

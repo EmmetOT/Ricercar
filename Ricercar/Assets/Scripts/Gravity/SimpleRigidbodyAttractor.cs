@@ -103,6 +103,14 @@ namespace Ricercar.Gravity
             m_rigidbody.AddForce(m_currentGravity/* * m_gravityField.GravityDeltaTime*/);
         }
 
+        public void SetMass(float mass)
+        {
+            m_mass = mass;
+
+            if (m_useRigidbodyMass)
+                m_rigidbody.mass = Mathf.Abs(mass);
+        }
+
         [Button("Calculate Surface Gravity")]
         public void CalculateSurfaceGravity()
         {
