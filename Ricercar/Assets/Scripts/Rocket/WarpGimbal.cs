@@ -15,6 +15,12 @@ namespace Ricercar.Character
         private BakedAttractor m_negativeAttractor;
 
         [SerializeField]
+        private Rigidbody2D m_rigidbody;
+
+        [SerializeField]
+        private float m_targetSpeed = 5f;
+
+        [SerializeField]
         [MinValue(0f)]
         [OnValueChanged("OnWarpMassSet")]
         private float m_warpMass = 0.1f;
@@ -23,13 +29,20 @@ namespace Ricercar.Character
         {
             base.OnMovementSet();
 
-            m_transform.rotation = Quaternion.FromToRotation(Vector2.up, m_currentMovement);
+            if (m_currentMovement != Vector2.zero)
+                m_transform.rotation = Quaternion.FromToRotation(Vector2.up, m_currentMovement);
+        }
+
+        private void FixedUpdate()
+        {
+            if (Vector2.Dot(m_transform.up, m_rigidbody.velocity) >= m_targetSpeed)
+                SetMass(0f);
+            else
+                SetMass(m_warpMass);
         }
 
         public void SetMass(float mass)
         {
-            m_warpMass = mass;
-
             m_positiveAttractor.SetMass(mass);
             m_negativeAttractor.SetMass(-mass);
         }
