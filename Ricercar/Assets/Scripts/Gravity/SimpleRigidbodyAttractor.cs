@@ -100,7 +100,7 @@ namespace Ricercar.Gravity
             if (!m_applyForceToSelf)
                 return;
 
-            m_rigidbody.AddForce(m_currentGravity * m_gravityField.GravityDeltaTime);
+            m_rigidbody.AddForce(m_currentGravity/* * m_gravityField.GravityDeltaTime*/);
         }
 
         [Button("Calculate Surface Gravity")]

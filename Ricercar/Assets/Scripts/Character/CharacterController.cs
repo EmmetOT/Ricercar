@@ -206,33 +206,11 @@ namespace Ricercar.Character
             m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
             m_rigidbody.angularVelocity = 0f;
 
-            //m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
-
+            m_currentVelocity += (CurrentGravity * Time.fixedDeltaTime) / m_rigidbody.mass;
             m_rigidbody.velocity = m_currentVelocity;
-
-            // this works. how to phrase it in terms of velocity?
-            m_rigidbody.AddForce(CurrentGravity * Time.fixedDeltaTime);
 
             ResetState();
         }
-
-        //private void FixedUpdate()
-        //{
-        //    UpdateState();
-
-        //    AdjustVelocity();
-
-        //    m_input.ManualFixedUpdate();
-
-        //    m_rigidbody.SetRotation(Quaternion.FromToRotation(Vector2.up, Up));
-        //    m_rigidbody.angularVelocity = 0f;
-
-        //    m_currentVelocity += CurrentGravity * Time.fixedDeltaTime;
-
-        //    m_rigidbody.velocity = m_currentVelocity;
-
-        //    ResetState();
-        //}
 
         private void OnJumpInput()
         {
@@ -274,7 +252,7 @@ namespace Ricercar.Character
             if (alignedSpeed > 0f)
                 jumpSpeed = Mathf.Max(jumpSpeed - alignedSpeed, 0f);
 
-            m_currentVelocity += jumpDirection * jumpSpeed * Time.fixedDeltaTime;
+            m_currentVelocity += jumpDirection * jumpSpeed;
         }
 
         private void OnCollisionStay2D(Collision2D collision)

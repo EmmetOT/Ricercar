@@ -49,7 +49,7 @@ namespace Ricercar.Gravity
             get
             {
                 if (!m_runAsync)
-                    return Time.fixedDeltaTime;
+                    return Time.deltaTime;
 
                 return m_gravityUpdateDeltaTime;
             }

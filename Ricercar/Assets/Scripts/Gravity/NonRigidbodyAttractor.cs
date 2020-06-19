@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace Ricercar.Gravity
 {
     public class NonRigidbodyAttractor : MonoBehaviour, IAttractor
@@ -23,6 +27,9 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         private Transform m_transform;
+
+        [SerializeField]
+        private bool m_drawGizmos = true;
 
         public Vector2 Position => m_transform.position;
 
@@ -94,12 +101,12 @@ namespace Ricercar.Gravity
             m_transform.position = position;
         }
 
-        private void Update()
+        private void FixedUpdate()
         {
             if (!m_applyForceToSelf)
                 return;
 
-            m_velocity += m_currentGravity * Time.deltaTime;
+            m_velocity += (m_currentGravity * Time.deltaTime) / m_mass;
             m_transform.position += (Vector3)m_velocity * Time.deltaTime;
         }
 
@@ -114,5 +121,22 @@ namespace Ricercar.Gravity
 
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
         }
+
+#if UNITY_EDITOR
+        protected virtual void OnDrawGizmosSelected()
+        {
+            if (!m_drawGizmos)
+                return;
+
+            if (m_isShell)
+            {
+                Handles.color = Color.white;
+                Handles.DrawWireDisc(transform.position, Vector3.back, m_radius);
+            }
+
+            if (!CurrentGravity.IsZero())
+                Utils.DrawArrow(Position, CurrentGravity.normalized, Color.white, CurrentGravity.magnitude * 0.5f, 3f);
+        }
+#endif
     }
 }
