@@ -127,6 +127,19 @@ namespace Ricercar.Gravity
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
         }
 
+        public Vector2 GetGravityFrom(Vector2 pos)
+        {
+            return GetGravityFromMass(pos, m_mass);
+        }
+
+        public Vector2 GetGravityFromMass(Vector2 pos, float mass)
+        {
+            Vector2 displacement = ((Vector2)m_transform.position - pos);
+            float sqrDist = displacement.sqrMagnitude;
+
+            return displacement.normalized * (GravityField.G * mass / sqrDist);
+        }
+
 #if UNITY_EDITOR
         protected virtual void OnDrawGizmosSelected()
         {

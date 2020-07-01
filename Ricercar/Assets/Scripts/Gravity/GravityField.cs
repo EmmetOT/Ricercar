@@ -258,7 +258,7 @@ namespace Ricercar.Gravity
 
                 if (!data.IsNaN())
                 {
-                    m_attractors[i].SetGravity(data);
+                    m_attractors[i].SetGravity(data/* * GravityDeltaTime*/);
                 }
             }
 
@@ -268,7 +268,7 @@ namespace Ricercar.Gravity
 
                 if (!data.IsNaN())
                 {
-                    m_bakedAttractors[i].SetGravity(data);
+                    m_bakedAttractors[i].SetGravity(data/* * GravityDeltaTime*/);
                 }
             }
         }

@@ -531,18 +531,36 @@ namespace Ricercar
 
         #region Gizmos
 
+        public static void Label(Vector3 position, string text, int size = 10, Color col = default)
+        {
+#if UNITY_EDITOR
+            GUIStyle style = new GUIStyle();
+            style.normal.textColor = col;
+            style.fontSize = size;
+
+            Handles.Label(position, text, style);
+#endif
+        }
+
         public static void DrawArrow(Vector3 position, Vector3 direction, Color colour, float magnitudeScale, float arrowScale)
         {
+#if UNITY_EDITOR
             Gizmos.color = colour;
 
             Gizmos.DrawLine(position, position + direction * magnitudeScale);
 
             Gizmos.DrawMesh(m_triangle, 0, position + direction * magnitudeScale, Quaternion.LookRotation(Vector3.forward, direction), Vector3.one * arrowScale);
+#endif
         }
 
         #endregion
 
         #region Maths
+
+        public static float Remap(float oldMin, float oldMax, float newMin, float newMax, float t)
+        {
+            return Mathf.Lerp(newMin, newMax, Mathf.InverseLerp(oldMin, oldMax, t));
+        }
 
         /// <summary>
         /// This function finds out on which side of a line segment the point is located.

@@ -63,7 +63,7 @@ namespace Ricercar.Character
             }
 
             //if (m_restOnLastMoveDirection || !moveDirection.IsZero())
-            m_moveDirection = moveDirection;
+            m_moveDirection = moveDirection.normalized;
 
             m_jumpFlag |= Input.GetKeyDown(m_jump);
         }

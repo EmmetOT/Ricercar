@@ -9,7 +9,7 @@ namespace Ricercar.Character
     public abstract class Gimbal : MonoBehaviour
     {
         protected Vector2 m_currentAim;
-        protected Vector2 m_currentMovement;
+        protected Vector2 m_desiredMovement;
         protected Transform m_transform;
 
         protected virtual void OnEnable()
@@ -30,10 +30,10 @@ namespace Ricercar.Character
 
         public void SetMovement(Vector2 movement)
         {
-            if (m_currentMovement == movement)
+            if (m_desiredMovement == movement)
                 return;
 
-            m_currentMovement = movement;
+            m_desiredMovement = movement;
             OnMovementSet();
         }
 

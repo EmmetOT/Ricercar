@@ -107,6 +107,9 @@ namespace Ricercar.Gravity
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
+            if (m_gravityMap == null)
+                return;
+
             Vector3 translate = transform.localToWorldMatrix.ExtractTranslation();
             Quaternion rotation = transform.localToWorldMatrix.ExtractRotation();
 
