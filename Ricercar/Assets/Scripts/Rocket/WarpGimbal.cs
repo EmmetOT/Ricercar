@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
 using Ricercar.Gravity;
+using UnityEditor;
 
 namespace Ricercar.Character
 {
@@ -25,12 +26,13 @@ namespace Ricercar.Character
         [OnValueChanged("OnWarpMassSet")]
         private float m_warpMass = 0.1f;
 
-        protected override void OnMovementSet()
-        {
-            base.OnMovementSet();
+        [SerializeField]
+        [MinValue(0f)]
+        private float m_rotationSpeed = 100f;
 
-            if (m_currentMovement != Vector2.zero)
-                m_transform.rotation = Quaternion.FromToRotation(Vector2.up, m_currentMovement);
+        private void Update()
+        {
+            m_transform.up = Vector2.Lerp(m_transform.up, m_currentMovement, m_rotationSpeed * Time.deltaTime).normalized;
         }
 
         private void FixedUpdate()
@@ -50,6 +52,18 @@ namespace Ricercar.Character
         private void OnWarpMassSet()
         {
             SetMass(m_warpMass);
+        }
+
+        private void OnDrawGizmos()
+        {
+            if (!EditorApplication.isPlaying)
+                return;
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + m_transform.right * 5f);
+
+            Gizmos.color = Color.blue;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_currentMovement * 5f);
         }
     }
 }

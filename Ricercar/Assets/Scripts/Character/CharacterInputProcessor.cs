@@ -38,6 +38,9 @@ namespace Ricercar.Character
         [SerializeField]
         private KeyCode m_jump;
 
+        [SerializeField]
+        private bool m_restOnLastMoveDirection = false;
+
         private Vector2 m_moveDirection = Vector2.zero;
         public Vector2 MoveDirection => m_moveDirection;
 
@@ -45,19 +48,22 @@ namespace Ricercar.Character
 
         public void ManualUpdate()
         {
-            m_moveDirection = Vector2.zero;
+            Vector2 moveDirection = Vector2.zero;
 
             if (HasHorizontalMovement)
             {
-                m_moveDirection += Input.GetKey(m_left) ? Vector2.left : Vector2.zero;
-                m_moveDirection += Input.GetKey(m_right) ? Vector2.right : Vector2.zero;
+                moveDirection += Input.GetKey(m_left) ? Vector2.left : Vector2.zero;
+                moveDirection += Input.GetKey(m_right) ? Vector2.right : Vector2.zero;
             }
 
             if (HasVerticalMovement)
             {
-                m_moveDirection += Input.GetKey(m_up) ? Vector2.up : Vector2.zero;
-                m_moveDirection += Input.GetKey(m_down) ? Vector2.down : Vector2.zero;
+                moveDirection += Input.GetKey(m_up) ? Vector2.up : Vector2.zero;
+                moveDirection += Input.GetKey(m_down) ? Vector2.down : Vector2.zero;
             }
+
+            //if (m_restOnLastMoveDirection || !moveDirection.IsZero())
+            m_moveDirection = moveDirection;
 
             m_jumpFlag |= Input.GetKeyDown(m_jump);
         }

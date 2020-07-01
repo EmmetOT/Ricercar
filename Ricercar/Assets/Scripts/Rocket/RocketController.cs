@@ -56,16 +56,5 @@ namespace Ricercar.Character
         {
             m_input.ManualFixedUpdate();
         }
-
-#if UNITY_EDITOR
-        private void OnDrawGizmos()
-        {
-            if (!EditorApplication.isPlaying)
-                return;
-
-            Gizmos.color = Color.white;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_currentAim * 5f);
-        }
-#endif
     }
 }
