@@ -39,12 +39,16 @@ namespace Ricercar.Character
         private KeyCode m_jump;
 
         [SerializeField]
-        private bool m_restOnLastMoveDirection = false;
+        private KeyCode m_space;
 
         private Vector2 m_moveDirection = Vector2.zero;
         public Vector2 MoveDirection => m_moveDirection;
 
         private bool m_jumpFlag = false;
+
+        public bool IsSendingMovementInput => Input.GetKey(m_left) || Input.GetKey(m_right) || Input.GetKey(m_up) || Input.GetKey(m_down);
+
+        private bool m_spaceDown = false;
 
         public void ManualUpdate()
         {
@@ -61,11 +65,21 @@ namespace Ricercar.Character
                 moveDirection += Input.GetKey(m_up) ? Vector2.up : Vector2.zero;
                 moveDirection += Input.GetKey(m_down) ? Vector2.down : Vector2.zero;
             }
-
-            //if (m_restOnLastMoveDirection || !moveDirection.IsZero())
+            
             m_moveDirection = moveDirection.normalized;
 
             m_jumpFlag |= Input.GetKeyDown(m_jump);
+
+            if (m_spaceDown && !Input.GetKey(m_space))
+            {
+                m_spaceDown = false;
+                OnSpaceUp?.Invoke();
+            }
+            else if (!m_spaceDown && Input.GetKey(m_space))
+            {
+                m_spaceDown = true;
+                OnSpaceDown?.Invoke();
+            }
         }
 
         public Vector2 GetAimDirection(Vector3 source, Camera camera)
@@ -83,5 +97,7 @@ namespace Ricercar.Character
         }
 
         public Action OnJumpInput;
+        public Action OnSpaceDown;
+        public Action OnSpaceUp;
     }
 }

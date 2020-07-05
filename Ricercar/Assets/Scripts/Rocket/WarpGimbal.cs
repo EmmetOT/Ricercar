@@ -34,21 +34,7 @@ namespace Ricercar.Character
         [MinValue(0f)]
         [Tooltip("How many seconds will it take to reach max speed?")]
         private float m_accelerationTime = 1f;
-
-        [SerializeField]
-        [MinValue(0f)]
-        [Tooltip("How many seconds will it take to reach stop when the hitting the breaks?")]
-        private float m_stopTime = 1f;
-
-        [SerializeField]
-        [MinValue(0f)]
-        [OnValueChanged("OnWarpMassSet")]
-        private float m_warpMass = 0.1f;
         
-        [SerializeField]
-        [MinValue(0f)]
-        private float m_rotationSpeed = 100f;
-
         [ReadOnly]
         [SerializeField]
         private float m_normalizedPositiveMass;
@@ -57,9 +43,31 @@ namespace Ricercar.Character
         [SerializeField]
         private float m_normalizedNegativeMass;
 
+        [SerializeField]
+        [ReadOnly]
+        private float m_maxPositiveMass;
+
+        [SerializeField]
+        [ReadOnly]
+        private float m_maxNegativeMass;
+
+
+        [ReadOnly]
+        [SerializeField]
+        private float m_currentNormalizedPositiveMass;
+
+        [ReadOnly]
+        [SerializeField]
+        private float m_currentNormalizedNegativeMass;
+
+
         [BoxGroup("Visuals")]
         [SerializeField]
         private SpriteRenderer m_positiveSprite;
+
+        [BoxGroup("Visuals")]
+        [SerializeField]
+        private SpriteRenderer m_negativeSprite;
 
         [BoxGroup("Visuals")]
         [SerializeField]
@@ -68,9 +76,14 @@ namespace Ricercar.Character
         [BoxGroup("Visuals")]
         [SerializeField]
         private Color m_maxPositiveSpriteColour;
-        
-        private bool m_blocked = false;
-        private bool m_stopping = false;
+
+        [BoxGroup("Visuals")]
+        [SerializeField]
+        private Color m_minNegativeSpriteColour;
+
+        [BoxGroup("Visuals")]
+        [SerializeField]
+        private Color m_maxNegativeSpriteColour;
 
         private void Start()
         {
@@ -78,80 +91,98 @@ namespace Ricercar.Character
             m_normalizedPositiveMass = 1f / m_positiveAttractor.GetGravityFromMass(m_rigidbody.position, 1f).magnitude;
             m_normalizedNegativeMass = 1f / m_negativeAttractor.GetGravityFromMass(m_rigidbody.position, 1f).magnitude;
 
-            Debug.Log("Setting mass to " + (m_normalizedPositiveMass));
-
-            m_positiveAttractor.SetMass(m_targetSpeed * m_normalizedPositiveMass / m_accelerationTime);
+            m_maxPositiveMass = m_targetSpeed * m_normalizedPositiveMass / m_accelerationTime;
+            m_maxNegativeMass = -m_targetSpeed * m_normalizedNegativeMass / m_accelerationTime;
         }
 
-        private void Update()
+        protected override void OnSetActive(bool active)
         {
-            // current situation: trying to determine what mass to give the positive attractor and where to position it so that i can turn back and forth
-            // on one axis
+            base.OnSetActive(active);
 
-            Vector2 desiredMovement = new Vector2(0f, -1f);
+            if (!active)
+            {
+                m_positiveAttractor.SetMass(0f);
+                m_negativeAttractor.SetMass(0f);
 
-            Debug.Log("Desired Movement = " + m_desiredMovement);
-
-            Vector2 acceleration = (m_desiredMovement * m_targetSpeed) - m_rigidbody.velocity;
-
-            //m_positiveAttractor.gameObject.SetActive(acceleration.magnitude != 0f);
-
-            m_positiveWarpPivot.up = acceleration.normalized;
-            //m_negativeWarpPivot.up = -acceleration.normalized;
-
-            float positiveMass = 0.5f * acceleration.magnitude * m_normalizedPositiveMass / m_accelerationTime;
-            //float negativeMass = -0.5f * acceleration.magnitude * m_normalizedNegativeMass / m_accelerationTime;
-
-            m_positiveAttractor.SetMass(positiveMass);
-            //m_negativeAttractor.SetMass(negativeMass);
-
-            m_positiveSprite.color = Color.Lerp(m_minPositiveSpriteColour, m_maxPositiveSpriteColour, Mathf.InverseLerp(0f, m_normalizedPositiveMass * m_targetSpeed, positiveMass));
-        }
-
-        public void Stop()
-        {
-            m_positiveAttractor.gameObject.SetActive(false);
-            m_positiveWarpPivot.up = Vector2.up;
-            m_blocked = false;
-        }
-
-        public void StopStop()
-        {
-            m_negativeAttractor.gameObject.SetActive(false);
-            m_negativeWarpPivot.up = Vector2.up;
-            m_stopping = false;
+                m_positiveAttractor.gameObject.SetActive(false);
+                m_negativeAttractor.gameObject.SetActive(false);
+            }
         }
 
         private void FixedUpdate()
         {
-            //if (Vector2.Dot(m_transform.up, m_rigidbody.velocity) >= m_targetSpeed)
-            //    SetMass(0f);
-            //else
-                //SetMass(m_warpMass);
-        }
-
-        public void SetMass(float mass)
-        {
-            m_positiveAttractor.SetMass(mass);
-            m_negativeAttractor.SetMass(-mass);
-        }
-
-        // called by inspector
-        private void OnWarpMassSet()
-        {
-            SetMass(m_warpMass);
-        }
-
-        private void OnDrawGizmos()
-        {
-            if (!EditorApplication.isPlaying)
+            if (!m_isActive)
                 return;
 
-            //Vector2 attractorGrav = m_rigidbody.mass * m_positiveAttractor.GetGravityFrom(m_rigidbody.position);
+            // how do i differentiate 'intentional movement' and braking from 'unintentional movement' such as falling?
 
+            Vector2 desiredMovement = new Vector2(0f, -1f);
+
+            (Vector2 positiveAcceleration, Vector2 negativeAcceleration) = CalculateWarpMasses(m_desiredMovement * m_targetSpeed, m_rigidbody.velocity);
+
+            m_positiveWarpPivot.up = positiveAcceleration.normalized;
+            m_negativeWarpPivot.up = -negativeAcceleration.normalized;
+
+            float positiveMass = positiveAcceleration.magnitude * m_normalizedPositiveMass / m_accelerationTime;
+            float negativeMass = -negativeAcceleration.magnitude * m_normalizedNegativeMass / m_accelerationTime;
+            
+            m_positiveAttractor.gameObject.SetActive(Mathf.Abs(positiveMass) > 0.000001f);
+            m_negativeAttractor.gameObject.SetActive(Mathf.Abs(negativeMass) > 0.000001f);
+            
+            m_positiveAttractor.SetMass(positiveMass);
+            m_negativeAttractor.SetMass(negativeMass);
+
+            m_currentNormalizedPositiveMass = Mathf.InverseLerp(0f, m_maxPositiveMass, positiveMass);
+            m_currentNormalizedNegativeMass = Mathf.InverseLerp(0f, -m_maxNegativeMass, -negativeMass);
+
+            m_positiveSprite.color = Color.Lerp(m_minPositiveSpriteColour, m_maxPositiveSpriteColour, m_currentNormalizedPositiveMass);
+            m_negativeSprite.color = Color.Lerp(m_minNegativeSpriteColour, m_maxNegativeSpriteColour, m_currentNormalizedNegativeMass);
+        }
+
+        protected override void OnSpaceDown()
+        {
+            base.OnSpaceDown();
+
+            SetActive(false);
+        }
+
+        protected override void OnSpaceUp()
+        {
+            base.OnSpaceDown();
+
+            SetActive(true);
+        }
+
+        /// <summary>
+        /// Returns a tuple of two vectors, the 'positive acceleration' and the 'negative acceleration.'
+        /// </summary>
+        private (Vector2, Vector2) CalculateWarpMasses(Vector2 newVelocity, Vector2 currentVelocity)
+        {
+            // this quaternion converts vectors into the current 'velocity space', i.e. a space where the current velocity is always "up"
+            Quaternion velocityTransform = Quaternion.FromToRotation(currentVelocity, Vector2.up);
+            Quaternion inverseVelocityTransform = Quaternion.Inverse(velocityTransform);
+            
+            Vector2 transformedCurrentVelocity = velocityTransform * currentVelocity;
+            Vector2 transformedNewVelocity = velocityTransform * newVelocity;
+            
+            Vector2 acceleration = transformedNewVelocity - transformedCurrentVelocity;
+            Vector2 positiveAcceleration = new Vector2(Mathf.Max(0f, acceleration.x), Mathf.Max(0f, acceleration.y));
+            Vector2 negativeAcceleration = new Vector2(Mathf.Max(0f, -acceleration.x), Mathf.Max(0f, -acceleration.y));
+
+            Vector2 untransformedPositiveAcceleration = inverseVelocityTransform * positiveAcceleration;
+            Vector2 untransformedNegativeAcceleration = inverseVelocityTransform * negativeAcceleration;
+            
+            return (untransformedPositiveAcceleration, untransformedNegativeAcceleration);
+        }
+        
+        private void OnDrawGizmos()
+        {
+            if (!EditorApplication.isPlaying || !enabled)
+                return;
+            
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1f, m_rigidbody.velocity.magnitude.ToString(), 13, Color.white);
-            //Utils.Label((Vector2)m_transform.position + Vector2.up * 1.4f, (m_normalizedPositiveMass / m_normalizedPositiveMass.magnitude).ToString(), 13, Color.green);
-            //Utils.Label((Vector2)m_transform.position + Vector2.up * 1.2f, attractorGrav.ToString(), 13, Color.red);
+            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.2f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
+            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.4f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
             // draw current velocity as cyan
             Gizmos.color = Color.cyan;

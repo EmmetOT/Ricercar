@@ -100,6 +100,7 @@ namespace Ricercar.Character
         //[ReadOnly]
         //[BoxGroup("State")]
         private Vector2 m_currentVelocity;
+        public Vector2 CurrentVelocity => m_currentVelocity;
 
         //[SerializeField]
         //[ReadOnly]
@@ -139,6 +140,9 @@ namespace Ricercar.Character
         public Vector2 Down => m_attractor == null ? Vector2.down : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.down);
         public Vector2 Left => m_attractor == null ? Vector2.left : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.left);
         public Vector2 Right => m_attractor == null ? Vector2.right : GravityField.ConvertDirectionToGravitySpace(m_attractor.CurrentGravity.normalized, Vector2.right);
+
+        public bool IsMovingLeft => Vector2.Dot(m_currentVelocity.normalized, Left) >= 0.8f;
+        public bool IsMovingRight => Vector2.Dot(m_currentVelocity.normalized, Right) >= 0.8f;
 
         private void OnValidate()
         {

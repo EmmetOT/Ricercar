@@ -36,6 +36,15 @@ namespace Ricercar.Character
         {
             m_transform = transform;
             m_camera = Camera.main;
+
+            m_input.OnSpaceDown += OnSpaceDown;
+            m_input.OnSpaceUp += OnSpaceUp;
+        }
+
+        private void OnDisable()
+        {
+            m_input.OnSpaceDown -= OnSpaceDown;
+            m_input.OnSpaceUp -= OnSpaceUp;
         }
 
         private void Update()
@@ -55,6 +64,18 @@ namespace Ricercar.Character
         private void FixedUpdate()
         {
             m_input.ManualFixedUpdate();
+        }
+
+        private void OnSpaceDown()
+        {
+            for (int i = 0; i < m_gimbals.Length; i++)
+                m_gimbals[i].SetSpaceDown();
+        }
+
+        private void OnSpaceUp()
+        {
+            for (int i = 0; i < m_gimbals.Length; i++)
+                m_gimbals[i].SetSpaceUp();
         }
     }
 }

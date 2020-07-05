@@ -23,7 +23,7 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         private bool m_affectsField = true;
-        public bool AffectsField => m_affectsField;
+        public bool AffectsField => m_affectsField && !Mathf.Approximately(m_mass, 0f);
 
         [SerializeField]
         private Transform m_transform;
