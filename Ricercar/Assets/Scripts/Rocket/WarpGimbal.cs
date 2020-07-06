@@ -12,6 +12,8 @@ namespace Ricercar.Character
     /// </summary>
     public class WarpGimbal : Gimbal
     {
+        private const float MIN_MASS_ABSOLUTE_VALUE = 0.000001f;
+
         [SerializeField]
         private Transform m_positiveWarpPivot;
 
@@ -116,8 +118,6 @@ namespace Ricercar.Character
 
             // how do i differentiate 'intentional movement' and braking from 'unintentional movement' such as falling?
 
-            Vector2 desiredMovement = new Vector2(0f, -1f);
-
             (Vector2 positiveAcceleration, Vector2 negativeAcceleration) = CalculateWarpMasses(m_desiredMovement * m_targetSpeed, m_rigidbody.velocity);
 
             m_positiveWarpPivot.up = positiveAcceleration.normalized;
@@ -126,8 +126,8 @@ namespace Ricercar.Character
             float positiveMass = positiveAcceleration.magnitude * m_normalizedPositiveMass / m_accelerationTime;
             float negativeMass = -negativeAcceleration.magnitude * m_normalizedNegativeMass / m_accelerationTime;
             
-            m_positiveAttractor.gameObject.SetActive(Mathf.Abs(positiveMass) > 0.000001f);
-            m_negativeAttractor.gameObject.SetActive(Mathf.Abs(negativeMass) > 0.000001f);
+            m_positiveAttractor.gameObject.SetActive(Mathf.Abs(positiveMass) > MIN_MASS_ABSOLUTE_VALUE);
+            m_negativeAttractor.gameObject.SetActive(Mathf.Abs(negativeMass) > MIN_MASS_ABSOLUTE_VALUE);
             
             m_positiveAttractor.SetMass(positiveMass);
             m_negativeAttractor.SetMass(negativeMass);
@@ -174,7 +174,8 @@ namespace Ricercar.Character
             
             return (untransformedPositiveAcceleration, untransformedNegativeAcceleration);
         }
-        
+
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             if (!EditorApplication.isPlaying || !enabled)
@@ -192,5 +193,6 @@ namespace Ricercar.Character
             Gizmos.color = Color.magenta;
             Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_desiredMovement.normalized * 2f);
         }
+#endif
     }
 }

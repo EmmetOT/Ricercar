@@ -223,8 +223,7 @@ namespace Ricercar
         /// </summary>
         public static Vector2 RotateAround(Vector2 point, Vector2 centre, float angle)
         {
-            // i find clockwise more intuitive 
-            angle *= -Mathf.Deg2Rad;
+            angle *= Mathf.Deg2Rad;
 
             Vector2 atOrigin = point - centre;
             return centre + (new Vector2(atOrigin.x * Mathf.Cos(angle) - atOrigin.y * Mathf.Sin(angle), atOrigin.y * Mathf.Cos(angle) + atOrigin.x * Mathf.Sin(angle)));

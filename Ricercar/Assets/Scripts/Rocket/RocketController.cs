@@ -64,6 +64,11 @@ namespace Ricercar.Character
         private void FixedUpdate()
         {
             m_input.ManualFixedUpdate();
+
+            for (int i = 0; i < m_gimbals.Length; i++)
+            {
+                m_gimbals[i].SetGravity(m_attractor.CurrentGravity);
+            }
         }
 
         private void OnSpaceDown()

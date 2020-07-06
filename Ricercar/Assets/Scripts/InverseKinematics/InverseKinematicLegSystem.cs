@@ -10,33 +10,51 @@ namespace Ricercar.InverseKinematics
     public class InverseKinematicLegSystem : MonoBehaviour
     {
         [SerializeField]
-        [MinValue(0f)]
-        private float m_groundDistance = 1.5f;
-
-        [SerializeField]
         private InverseKinematicLeg m_legOne;
 
         [SerializeField]
         private InverseKinematicLeg m_legTwo;
 
-        private Vector2 LegDir => (m_legTwo.transform.position - m_legOne.transform.position).normalized;
-        private Vector2 BaseDir => (m_legTwo.RunForwardKinematics() - m_legOne.RunForwardKinematics()).normalized;
-        private Vector2 GroundOffset => -transform.up * m_groundDistance;
-        public Vector2 LegOneGroundPos => (Vector2)m_legOne.transform.position + GroundOffset;
-        public Vector2 LegTwoGroundPos => (Vector2)m_legTwo.transform.position + GroundOffset;
+        private Vector2 m_legOneGroundTarget;
+        private Vector2 m_legTwoGroundTarget;
 
-        public void Update()
+        private bool m_hasGroundTarget = false;
+        public bool HasGroundTarget => m_hasGroundTarget;
+
+        public void TryLand()
         {
-            m_legOne.SetTarget(LegOneGroundPos);
-            m_legTwo.SetTarget(LegTwoGroundPos);
+            RaycastForGroundTargets();
+
+            if (!m_hasGroundTarget)
+                return;
+
+            m_legOne.SetTarget(m_legOneGroundTarget);
+            m_legTwo.SetTarget(m_legTwoGroundTarget);
+
+            m_legOne.RunInverseKinematics();
+            m_legTwo.RunInverseKinematics();
+        }
+
+        private void RaycastForGroundTargets()
+        {
+            RaycastHit2D leftHit = Physics2D.Raycast(m_legOne.transform.position, -transform.up, m_legOne.MaxLength);
+            RaycastHit2D rightHit = Physics2D.Raycast(m_legTwo.transform.position, -transform.up, m_legTwo.MaxLength);
+
+            m_hasGroundTarget = leftHit.collider != null && rightHit.collider != null;
+
+            m_legOneGroundTarget = leftHit.point;
+            m_legTwoGroundTarget = rightHit.point;
         }
 
         private void OnDrawGizmos()
         {
+            if (!m_hasGroundTarget)
+                return;
+
             Gizmos.color = Color.red;
 
-            Gizmos.DrawSphere(m_legOne.transform.position, 0.2f);
-            Gizmos.DrawSphere(m_legTwo.transform.position, 0.2f);
+            Gizmos.DrawSphere(m_legOneGroundTarget, 0.2f);
+            Gizmos.DrawSphere(m_legTwoGroundTarget, 0.2f);
         }
 
     }

@@ -10,6 +10,8 @@ namespace Ricercar.Character
     {
         protected Vector2 m_currentAim;
         protected Vector2 m_desiredMovement;
+        protected Vector2 m_currentGravity;
+
         protected Transform m_transform;
 
         [SerializeField]
@@ -19,6 +21,18 @@ namespace Ricercar.Character
         {
             m_transform = transform;
         }
+
+        public void SetGravity(Vector2 gravity)
+        {
+            if (m_currentGravity == gravity)
+                return;
+
+            m_currentGravity = gravity;
+
+            OnGravityChanged();
+        }
+
+        protected virtual void OnGravityChanged() { }
 
         public void SetAim(Vector2 aim)
         {
