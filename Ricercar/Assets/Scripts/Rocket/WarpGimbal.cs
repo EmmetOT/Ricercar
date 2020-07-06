@@ -36,7 +36,7 @@ namespace Ricercar.Character
         [MinValue(0f)]
         [Tooltip("How many seconds will it take to reach max speed?")]
         private float m_accelerationTime = 1f;
-        
+
         [ReadOnly]
         [SerializeField]
         private float m_normalizedPositiveMass;
@@ -95,6 +95,12 @@ namespace Ricercar.Character
 
             m_maxPositiveMass = m_targetSpeed * m_normalizedPositiveMass / m_accelerationTime;
             m_maxNegativeMass = -m_targetSpeed * m_normalizedNegativeMass / m_accelerationTime;
+
+            if (!m_rigidbody.velocity.IsZero())
+            {
+                Debug.Log("Velocity is not zero at start!");
+                Debug.Break();
+            }
         }
 
         protected override void OnSetActive(bool active)
@@ -105,7 +111,7 @@ namespace Ricercar.Character
             m_negativeAttractor.SetMass(0f);
 
             if (!m_isActive)
-            { 
+            {
                 m_positiveAttractor.gameObject.SetActive(false);
                 m_negativeAttractor.gameObject.SetActive(false);
             }
@@ -121,14 +127,14 @@ namespace Ricercar.Character
             (Vector2 positiveAcceleration, Vector2 negativeAcceleration) = CalculateWarpMasses(m_desiredMovement * m_targetSpeed, m_rigidbody.velocity);
 
             m_positiveWarpPivot.up = positiveAcceleration.normalized;
-            m_negativeWarpPivot.up = -negativeAcceleration.normalized;
+            m_negativeWarpPivot.up = negativeAcceleration.normalized;
 
             float positiveMass = positiveAcceleration.magnitude * m_normalizedPositiveMass / m_accelerationTime;
             float negativeMass = -negativeAcceleration.magnitude * m_normalizedNegativeMass / m_accelerationTime;
-            
+
             m_positiveAttractor.gameObject.SetActive(Mathf.Abs(positiveMass) > MIN_MASS_ABSOLUTE_VALUE);
             m_negativeAttractor.gameObject.SetActive(Mathf.Abs(negativeMass) > MIN_MASS_ABSOLUTE_VALUE);
-            
+
             m_positiveAttractor.SetMass(positiveMass);
             m_negativeAttractor.SetMass(negativeMass);
 
@@ -161,17 +167,17 @@ namespace Ricercar.Character
             // this quaternion converts vectors into the current 'velocity space', i.e. a space where the current velocity is always "up"
             Quaternion velocityTransform = Quaternion.FromToRotation(currentVelocity, Vector2.up);
             Quaternion inverseVelocityTransform = Quaternion.Inverse(velocityTransform);
-            
+
             Vector2 transformedCurrentVelocity = velocityTransform * currentVelocity;
             Vector2 transformedNewVelocity = velocityTransform * newVelocity;
-            
+
             Vector2 acceleration = transformedNewVelocity - transformedCurrentVelocity;
             Vector2 positiveAcceleration = new Vector2(Mathf.Max(0f, acceleration.x), Mathf.Max(0f, acceleration.y));
             Vector2 negativeAcceleration = new Vector2(Mathf.Max(0f, -acceleration.x), Mathf.Max(0f, -acceleration.y));
 
             Vector2 untransformedPositiveAcceleration = inverseVelocityTransform * positiveAcceleration;
             Vector2 untransformedNegativeAcceleration = inverseVelocityTransform * negativeAcceleration;
-            
+
             return (untransformedPositiveAcceleration, untransformedNegativeAcceleration);
         }
 
@@ -182,19 +188,17 @@ namespace Ricercar.Character
                 return;
 
             Gizmos.matrix = Matrix4x4.identity;
-            
+
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1f, m_rigidbody.velocity.magnitude.ToString(), 13, Color.white);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.2f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.4f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
-            //// draw current velocity as cyan
-            //Gizmos.color = Color.cyan;
-            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_rigidbody.velocity.normalized * 2f);
-
-            Debug.Log((Vector3)m_desiredMovement.normalized * 2f);
+            // draw current velocity as cyan
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_rigidbody.velocity.normalized * 2f);
 
             // draw desired velocity as magenta
-            Gizmos.color = Color.magenta;
+            Gizmos.color = Color.red;
             Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_desiredMovement.normalized * 2f);
         }
 #endif

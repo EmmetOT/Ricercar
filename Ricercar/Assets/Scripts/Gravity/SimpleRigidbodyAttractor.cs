@@ -11,6 +11,8 @@ namespace Ricercar.Gravity
 {
     public class SimpleRigidbodyAttractor : MonoBehaviour, ISimpleAttractor
     {
+        private bool m_canReceiveGravity = false;
+
         [SerializeField]
         protected GravityField m_gravityField;
 
@@ -93,13 +95,24 @@ namespace Ricercar.Gravity
             m_gravityField.DeregisterAttractor(this);
         }
 
+        private IEnumerator Start()
+        {
+            yield return null;
+            m_canReceiveGravity = true;
+        }
+
         public void SetGravity(Vector2 gravity)
         {
+            // for some unclear reason, gravity from the previous play session can
+            // "leak in" during the first frame
+            if (!m_canReceiveGravity)
+                return;
+
             m_currentGravity = gravity;
 
             if (!m_applyForceToSelf)
                 return;
-            
+
             m_rigidbody.AddForce(m_currentGravity);
         }
 

@@ -28,10 +28,6 @@ namespace Ricercar.Character
 
         [SerializeField]
         [BoxGroup("Components")]
-        private Rigidbody2D m_rigidbody;
-
-        [SerializeField]
-        [BoxGroup("Components")]
         private SimpleRigidbodyAttractor m_attractor;
 
         [SerializeField]

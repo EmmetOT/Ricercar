@@ -55,6 +55,11 @@ namespace Ricercar.Gravity
             }
         }
 
+        private void Awake()
+        {
+            ReleaseBuffers();
+        }
+
         private void Start()
         {
             // exists solely to stop a complaint if we pass an empty one in
@@ -74,6 +79,12 @@ namespace Ricercar.Gravity
         private void OnDisable()
         {
             ReleaseBuffers();
+
+            Shader.SetGlobalBuffer("PointAttractors", null);
+            Shader.SetGlobalBuffer("BakedAttractors", null);
+            Shader.SetGlobalInt("PointCount", 0);
+            Shader.SetGlobalInt("BakedCount", 0);
+            Shader.SetGlobalTexture("BakedAttractorTextures", null);
         }
 
         public void ReleaseBuffers()
@@ -81,12 +92,6 @@ namespace Ricercar.Gravity
             m_forcesOutputBuffer?.Release();
             m_pointInputBuffer?.Release();
             m_bakedInputBuffer?.Release();
-
-            Shader.SetGlobalBuffer("PointAttractors", null);
-            Shader.SetGlobalBuffer("BakedAttractors", null);
-            Shader.SetGlobalInt("PointCount", 0);
-            Shader.SetGlobalInt("BakedCount", 0);
-            Shader.SetGlobalTexture("BakedAttractorTextures", null);
         }
 
         public void RegisterAttractor(IAttractor attractor)
@@ -123,7 +128,18 @@ namespace Ricercar.Gravity
             else
             {
                 if (m_attractors.Remove(attractor))
+                {
+                    if (attractor is SimpleRigidbodyAttractor simple)
+                    {
+                        Debug.Log("Succesfully removed: " + simple.name, simple);
+                    }
+                    else if (attractor is NonRigidbodyAttractor non)
+                    {
+                        Debug.Log("Succesfully removed: " + non.name, non);
+                    }
+
                     RefreshComputeBuffers();
+                }
             }
         }
 
