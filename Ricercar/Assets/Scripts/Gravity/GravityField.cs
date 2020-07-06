@@ -81,6 +81,12 @@ namespace Ricercar.Gravity
             m_forcesOutputBuffer?.Release();
             m_pointInputBuffer?.Release();
             m_bakedInputBuffer?.Release();
+
+            Shader.SetGlobalBuffer("PointAttractors", null);
+            Shader.SetGlobalBuffer("BakedAttractors", null);
+            Shader.SetGlobalInt("PointCount", 0);
+            Shader.SetGlobalInt("BakedCount", 0);
+            Shader.SetGlobalTexture("BakedAttractorTextures", null);
         }
 
         public void RegisterAttractor(IAttractor attractor)

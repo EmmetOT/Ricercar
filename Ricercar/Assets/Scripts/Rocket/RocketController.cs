@@ -13,6 +13,17 @@ namespace Ricercar.Character
     public class RocketController : MonoBehaviour
     {
         [SerializeField]
+        [ReadOnly]
+        private bool m_canEnter = false;
+
+        [SerializeField]
+        private bool m_hasPilot = false;
+
+        [SerializeField]
+        [ReadOnly]
+        private CharacterController m_characterController; // temp until we have a proper character script
+
+        [SerializeField]
         private CharacterInputProcessor m_input;
 
         [SerializeField]
@@ -47,9 +58,32 @@ namespace Ricercar.Character
             m_input.OnSpaceUp -= OnSpaceUp;
         }
 
+        public void SetHasPilot(bool hasPilot)
+        {
+            m_hasPilot = hasPilot;
+
+            if (m_hasPilot && m_characterController != null)
+            {
+                Debug.Log("Doing the thing.");
+
+                m_characterController.transform.SetParent(m_transform);
+                m_characterController.transform.localPosition = Vector2.zero;
+                m_characterController.transform.localRotation = Quaternion.identity;
+                m_characterController.gameObject.SetActive(false);
+
+                for (int i = 0; i < m_gimbals.Length; i++)
+                {
+                    m_gimbals[i].SetActive(true);
+                }
+            }
+        }
+
         private void Update()
         {
             m_input.ManualUpdate();
+
+            if (!m_hasPilot)
+                return;
 
             m_currentAim = m_input.GetAimDirection(m_transform.position, m_camera);
             m_currentMovement = m_input.MoveDirection;
@@ -65,6 +99,9 @@ namespace Ricercar.Character
         {
             m_input.ManualFixedUpdate();
 
+            if (!m_hasPilot)
+                return;
+
             for (int i = 0; i < m_gimbals.Length; i++)
             {
                 m_gimbals[i].SetGravity(m_attractor.CurrentGravity);
@@ -73,14 +110,33 @@ namespace Ricercar.Character
 
         private void OnSpaceDown()
         {
-            for (int i = 0; i < m_gimbals.Length; i++)
-                m_gimbals[i].SetSpaceDown();
+            if (m_hasPilot)
+            {
+                for (int i = 0; i < m_gimbals.Length; i++)
+                    m_gimbals[i].SetSpaceDown();
+            }
         }
 
         private void OnSpaceUp()
         {
-            for (int i = 0; i < m_gimbals.Length; i++)
-                m_gimbals[i].SetSpaceUp();
+            Debug.Log("Space up in rocket!");
+
+            if (m_hasPilot)
+            {
+                for (int i = 0; i < m_gimbals.Length; i++)
+                    m_gimbals[i].SetSpaceUp();
+            }
+            else if (m_canEnter)
+            {
+                Debug.Log("Setting has pilot to true");
+                SetHasPilot(true);
+            }
+        }
+
+        public void SetCanEnter(bool canEnter, CharacterController characterController = null)
+        {
+            m_canEnter = canEnter;
+            m_characterController = characterController;
         }
     }
 }

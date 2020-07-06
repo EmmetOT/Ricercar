@@ -101,11 +101,11 @@ namespace Ricercar.Character
         {
             base.OnSetActive(active);
 
-            if (!active)
-            {
-                m_positiveAttractor.SetMass(0f);
-                m_negativeAttractor.SetMass(0f);
+            m_positiveAttractor.SetMass(0f);
+            m_negativeAttractor.SetMass(0f);
 
+            if (!m_isActive)
+            { 
                 m_positiveAttractor.gameObject.SetActive(false);
                 m_negativeAttractor.gameObject.SetActive(false);
             }
@@ -178,16 +178,20 @@ namespace Ricercar.Character
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (!EditorApplication.isPlaying || !enabled)
+            if (!EditorApplication.isPlaying || !enabled || !m_isActive)
                 return;
+
+            Gizmos.matrix = Matrix4x4.identity;
             
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1f, m_rigidbody.velocity.magnitude.ToString(), 13, Color.white);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.2f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.4f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
-            // draw current velocity as cyan
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_rigidbody.velocity.normalized * 2f);
+            //// draw current velocity as cyan
+            //Gizmos.color = Color.cyan;
+            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_rigidbody.velocity.normalized * 2f);
+
+            Debug.Log((Vector3)m_desiredMovement.normalized * 2f);
 
             // draw desired velocity as magenta
             Gizmos.color = Color.magenta;

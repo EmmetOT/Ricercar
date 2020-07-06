@@ -46,15 +46,15 @@ namespace Ricercar.InverseKinematics
             m_legTwoGroundTarget = rightHit.point;
         }
 
-        private void OnDrawGizmos()
+        private void OnDrawGizmosSelected()
         {
             if (!m_hasGroundTarget)
                 return;
 
             Gizmos.color = Color.red;
 
-            Gizmos.DrawSphere(m_legOneGroundTarget, 0.2f);
-            Gizmos.DrawSphere(m_legTwoGroundTarget, 0.2f);
+            Gizmos.DrawSphere(m_legOneGroundTarget, 0.3f);
+            Gizmos.DrawSphere(m_legTwoGroundTarget, 0.3f);
         }
 
     }

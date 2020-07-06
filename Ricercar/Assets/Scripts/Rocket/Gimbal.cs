@@ -9,7 +9,10 @@ namespace Ricercar.Character
     public abstract class Gimbal : MonoBehaviour
     {
         protected Vector2 m_currentAim;
-        protected Vector2 m_desiredMovement;
+
+        [SerializeField]
+        [ReadOnly]
+        protected Vector2 m_desiredMovement = Vector2.zero;
         protected Vector2 m_currentGravity;
 
         protected Transform m_transform;
@@ -19,6 +22,7 @@ namespace Ricercar.Character
 
         protected virtual void OnEnable()
         {
+            m_desiredMovement = Vector2.zero;
             m_transform = transform;
         }
 
