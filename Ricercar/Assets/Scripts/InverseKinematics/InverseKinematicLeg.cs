@@ -24,25 +24,27 @@ namespace Ricercar.InverseKinematics
             }
         }
 
-        public float testAngle;
-
         [SerializeField]
         private LegData[] m_legData;
 
         [SerializeField]
         [MinValue(0.1f)]
+        [HideIf("HasAnalyticSolution")]
         private float m_samplingDistance = 0.1f;
 
         [SerializeField]
         [MinValue(0.1f)]
+        [HideIf("HasAnalyticSolution")]
         private float m_learningRate = 0.1f;
 
         [SerializeField]
         [MinValue(0.1f)]
+        [HideIf("HasAnalyticSolution")]
         private float m_distanceThreshold = 0.1f;
 
         [SerializeField]
         [MinValue(1)]
+        [HideIf("HasAnalyticSolution")]
         private int m_iterationsPerFrame = 1;
 
         [SerializeField]
@@ -55,6 +57,7 @@ namespace Ricercar.InverseKinematics
         private Vector2 m_target;
 
         public bool IsInTargetRange => ((Vector2)transform.position - m_target).sqrMagnitude < m_maxTotalLength * m_maxTotalLength;
+        private bool HasAnalyticSolution => !m_legData.IsNullOrEmpty() && m_legData.Length == 2;
 
         private void Awake()
         {
@@ -114,8 +117,64 @@ namespace Ricercar.InverseKinematics
             return gradient;
         }
 
+        /// <summary>
+        /// An analytic solution exists for the case where there are only two joints. This function takes
+        /// the positions of the two joints, the effector position, and the target, and returns a tuple
+        /// containing the two angles by which the joints must be rotated for the effector to match the target.
+        /// </summary>
+        private (float, float) TwoJointInverseKinematics(Vector2 jointOne, Vector2 jointTwo, Vector2 effector, Vector2 target)
+        {
+            float jointAngle0;
+            float jointAngle1;
+
+            float length0 = Vector2.Distance(jointOne, jointTwo);
+            float length1 = Vector2.Distance(jointTwo, effector);
+
+            float totalLength = Vector2.Distance(jointOne, target);
+
+            // Angle from joint one to target
+            Vector2 diff = target - jointOne;
+
+            // the atan input here is flipped from the tutorial. it's wrong, but it works!
+            float atan = Mathf.Atan2(diff.x, diff.y) * Mathf.Rad2Deg;
+
+            // Is the target reachable?
+            // If not, we stretch as far as possible
+            if (length0 + length1 < totalLength)
+            {
+                jointAngle0 = atan;
+                jointAngle1 = 0f;
+            }
+            else
+            {
+                float cosAngle0 = ((totalLength * totalLength) + (length0 * length0) - (length1 * length1)) / (2 * totalLength * length0);
+                float angle0 = Mathf.Acos(cosAngle0) * Mathf.Rad2Deg;
+
+                float cosAngle1 = ((length1 * length1) + (length0 * length0) - (totalLength * totalLength)) / (2 * length1 * length0);
+                float angle1 = Mathf.Acos(cosAngle1) * Mathf.Rad2Deg;
+
+                // So they work in Unity reference frame
+                jointAngle0 = atan - angle0;
+                jointAngle1 = 180f - angle1;
+            }
+
+            return (jointAngle0, jointAngle1);
+        }
+
         public void RunInverseKinematics()
         {
+            if (HasAnalyticSolution)
+            {
+                Vector2 jointOne = transform.position;
+                Vector2 jointTwo = jointOne + m_legData[0].startPosition;
+                Vector2 effector = jointOne + m_legData[0].startPosition + m_legData[1].startPosition;
+                (float, float) angles = TwoJointInverseKinematics(jointOne, jointTwo, effector, m_target);
+                m_angles[0] = angles.Item1;
+                m_angles[1] = angles.Item2;
+
+                return;
+            }
+
             if (DistanceFromTarget() < m_distanceThreshold)
                 return;
 
