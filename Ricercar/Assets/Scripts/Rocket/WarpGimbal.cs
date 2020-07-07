@@ -12,7 +12,10 @@ namespace Ricercar.Character
     /// </summary>
     public class WarpGimbal : Gimbal
     {
-        private const float MIN_MASS_ABSOLUTE_VALUE = 0.000001f;
+        private const float MIN_MASS_ABSOLUTE_VALUE = 0f;//0.001f;
+
+        [SerializeField]
+        private SimpleRigidbodyAttractor m_attractor;
 
         [SerializeField]
         private Transform m_positiveWarpPivot;
@@ -37,29 +40,21 @@ namespace Ricercar.Character
         [Tooltip("How many seconds will it take to reach max speed?")]
         private float m_accelerationTime = 1f;
 
-        [ReadOnly]
-        [SerializeField]
+        // the gravity vectors towards the two attractors if theyre positioned
+        // at their resting position with a mass of 1
+        private Vector2 m_positiveAttractorGravityVector;
+        private Vector2 m_negativeAttractorGravityVector;
+
         private float m_normalizedPositiveMass;
 
-        [ReadOnly]
-        [SerializeField]
         private float m_normalizedNegativeMass;
 
-        [SerializeField]
-        [ReadOnly]
         private float m_maxPositiveMass;
 
-        [SerializeField]
-        [ReadOnly]
         private float m_maxNegativeMass;
 
-
-        [ReadOnly]
-        [SerializeField]
         private float m_currentNormalizedPositiveMass;
 
-        [ReadOnly]
-        [SerializeField]
         private float m_currentNormalizedNegativeMass;
 
 
@@ -89,9 +84,12 @@ namespace Ricercar.Character
 
         private void Start()
         {
+            m_positiveAttractorGravityVector = m_positiveAttractor.GetGravityFromMass(m_rigidbody.position, 1f);
+            m_negativeAttractorGravityVector = m_negativeAttractor.GetGravityFromMass(m_rigidbody.position, 1f);
+
             // set the positive attractors mass such that it accelerates to the target speed in the target amount of time
-            m_normalizedPositiveMass = 1f / m_positiveAttractor.GetGravityFromMass(m_rigidbody.position, 1f).magnitude;
-            m_normalizedNegativeMass = 1f / m_negativeAttractor.GetGravityFromMass(m_rigidbody.position, 1f).magnitude;
+            m_normalizedPositiveMass = 1f / m_positiveAttractorGravityVector.magnitude;
+            m_normalizedNegativeMass = 1f / m_negativeAttractorGravityVector.magnitude;
 
             m_maxPositiveMass = m_targetSpeed * m_normalizedPositiveMass / m_accelerationTime;
             m_maxNegativeMass = -m_targetSpeed * m_normalizedNegativeMass / m_accelerationTime;
@@ -117,20 +115,40 @@ namespace Ricercar.Character
             }
         }
 
+        public Vector2 GetCurrentWarpInfluence()
+        {
+            Vector2 positiveInfluence = m_positiveAttractor.Mass * Utils.RotateAround(m_positiveAttractorGravityVector, Vector2.zero, m_positiveWarpPivot.eulerAngles.z);
+            Vector2 negativeInfluence = m_negativeAttractor.Mass * Utils.RotateAround(m_negativeAttractorGravityVector, Vector2.zero, m_negativeWarpPivot.eulerAngles.z);
+
+            return positiveInfluence + negativeInfluence;
+        }
+
+        private Vector2 m_gravityWithoutWarpInfluence;
+
+        /// <summary>
+        /// Because the warp gimbal affects gravity, this vector returns the gravity if the warp gimbal wasn't there.
+        /// </summary>
+        public Vector2 GravityWithoutWarpInfluence => m_gravityWithoutWarpInfluence;
+
         private void FixedUpdate()
         {
             if (!m_isActive)
                 return;
 
-            // how do i differentiate 'intentional movement' and braking from 'unintentional movement' such as falling?
+            m_gravityWithoutWarpInfluence = m_accelerationTime * (m_attractor.CurrentGravity - GetCurrentWarpInfluence()) / m_attractor.Mass;
 
-            (Vector2 positiveAcceleration, Vector2 negativeAcceleration) = CalculateWarpMasses(m_desiredMovement * m_targetSpeed, m_rigidbody.velocity);
+            Quaternion rotation = Quaternion.FromToRotation(Vector2.up, -m_gravityWithoutWarpInfluence.normalized);
 
-            m_positiveWarpPivot.up = positiveAcceleration.normalized;
-            m_negativeWarpPivot.up = negativeAcceleration.normalized;
+            Vector2 desiredVelocity = rotation * (m_desiredMovement * m_targetSpeed);
 
-            float positiveMass = positiveAcceleration.magnitude * m_normalizedPositiveMass / m_accelerationTime;
-            float negativeMass = -negativeAcceleration.magnitude * m_normalizedNegativeMass / m_accelerationTime;
+            // what is this 0.2 value??? why does it work???
+            Vector2 currentVelocity = m_rigidbody.velocity + m_gravityWithoutWarpInfluence;
+
+            m_positiveWarpPivot.up = desiredVelocity.normalized;
+            m_negativeWarpPivot.up = currentVelocity.normalized;
+
+            float positiveMass = desiredVelocity.magnitude * m_normalizedPositiveMass / m_accelerationTime;
+            float negativeMass = -currentVelocity.magnitude * m_normalizedNegativeMass / m_accelerationTime;
 
             m_positiveAttractor.gameObject.SetActive(Mathf.Abs(positiveMass) > MIN_MASS_ABSOLUTE_VALUE);
             m_negativeAttractor.gameObject.SetActive(Mathf.Abs(negativeMass) > MIN_MASS_ABSOLUTE_VALUE);
@@ -159,27 +177,38 @@ namespace Ricercar.Character
             SetActive(true);
         }
 
+        ///// <summary>
+        ///// Returns a tuple of two vectors, the 'positive acceleration' and the 'negative acceleration.'
+        ///
+        /// todo: come back to this and do some dot product stuff instead of the naive positive/negative split i did before
         /// <summary>
-        /// Returns a tuple of two vectors, the 'positive acceleration' and the 'negative acceleration.'
+        /// 
         /// </summary>
-        private (Vector2, Vector2) CalculateWarpMasses(Vector2 newVelocity, Vector2 currentVelocity)
-        {
-            // this quaternion converts vectors into the current 'velocity space', i.e. a space where the current velocity is always "up"
-            Quaternion velocityTransform = Quaternion.FromToRotation(currentVelocity, Vector2.up);
-            Quaternion inverseVelocityTransform = Quaternion.Inverse(velocityTransform);
+        ///// </summary>
+        //private (Vector2, Vector2) CalculateWarpMasses(Vector2 newVelocity, Vector2 currentVelocity)
+        //{
+        //    // this quaternion converts local velocity vectors into the current 'velocity space', i.e. a space where the current velocity is always "up"
+        //    Quaternion velocityTransform = Quaternion.FromToRotation(currentVelocity, Vector2.up);
+        //    Quaternion inverseVelocityTransform = Quaternion.Inverse(velocityTransform);
 
-            Vector2 transformedCurrentVelocity = velocityTransform * currentVelocity;
-            Vector2 transformedNewVelocity = velocityTransform * newVelocity;
+        //    Vector2 transformedCurrentVelocity = velocityTransform * currentVelocity;
+        //    Vector2 transformedNewVelocity = velocityTransform * newVelocity;
 
-            Vector2 acceleration = transformedNewVelocity - transformedCurrentVelocity;
-            Vector2 positiveAcceleration = new Vector2(Mathf.Max(0f, acceleration.x), Mathf.Max(0f, acceleration.y));
-            Vector2 negativeAcceleration = new Vector2(Mathf.Max(0f, -acceleration.x), Mathf.Max(0f, -acceleration.y));
+        //    // desired change in speed
+        //    Vector2 acceleration = transformedNewVelocity - transformedCurrentVelocity;
 
-            Vector2 untransformedPositiveAcceleration = inverseVelocityTransform * positiveAcceleration;
-            Vector2 untransformedNegativeAcceleration = inverseVelocityTransform * negativeAcceleration;
+        //    // split the acceleration into positive (the vector we want to speed towards) and negative (the vector by which to reduce speed)
+        //    //Vector2 positiveAcceleration = new Vector2(Mathf.Max(0f, acceleration.x), Mathf.Max(0f, acceleration.y));
+        //    //Vector2 negativeAcceleration = new Vector2(Mathf.Max(0f, -acceleration.x), Mathf.Max(0f, -acceleration.y));
 
-            return (untransformedPositiveAcceleration, untransformedNegativeAcceleration);
-        }
+        //    //// transform the result back into local space
+        //    //Vector2 untransformedPositiveAcceleration = inverseVelocityTransform * positiveAcceleration;
+        //    //Vector2 untransformedNegativeAcceleration = inverseVelocityTransform * negativeAcceleration;
+
+        //    acceleration = inverseVelocityTransform * acceleration;
+
+        //    return (newVelocity, currentVelocity);
+        //}
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
@@ -187,19 +216,27 @@ namespace Ricercar.Character
             if (!EditorApplication.isPlaying || !enabled || !m_isActive)
                 return;
 
-            Gizmos.matrix = Matrix4x4.identity;
+            //Gizmos.matrix = Matrix4x4.identity;
 
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1f, m_rigidbody.velocity.magnitude.ToString(), 13, Color.white);
-            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.2f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
-            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.4f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
+            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.3f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
+            Utils.Label((Vector2)m_transform.position + Vector2.up * 1.6f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
             // draw current velocity as cyan
             Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_rigidbody.velocity.normalized * 2f);
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)GravityWithoutWarpInfluence.normalized * 2f);
 
-            // draw desired velocity as magenta
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_desiredMovement.normalized * 2f);
+            //// draw desired velocity as magenta
+            //Gizmos.color = Color.red;
+            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_desiredMovement.normalized * 2f);
+
+            //// draw current velocity as cyan
+            //Gizmos.color = Color.red;
+            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_negativeAcceleration.normalized * 2f);
+
+            //// draw desired velocity as magenta
+            //Gizmos.color = Color.blue;
+            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_positiveAcceleration.normalized * 2f);
         }
 #endif
     }

@@ -13,6 +13,9 @@ namespace Ricercar.Character
     public class RocketController : MonoBehaviour
     {
         [SerializeField]
+        private WarpGimbal m_warpGimbal;
+
+        [SerializeField]
         [ReadOnly]
         private bool m_canEnter = false;
 
@@ -95,13 +98,8 @@ namespace Ricercar.Character
         {
             m_input.ManualFixedUpdate();
 
-            if (!m_hasPilot)
-                return;
-
             for (int i = 0; i < m_gimbals.Length; i++)
-            {
-                m_gimbals[i].SetGravity(m_attractor.CurrentGravity);
-            }
+                m_gimbals[i].SetGravity(m_warpGimbal.GravityWithoutWarpInfluence);
         }
 
         private void OnSpaceDown()

@@ -108,7 +108,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3159023071604483095}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.7, z: 0}
+  m_LocalPosition: {x: 0, y: 1.3, z: 0}
   m_LocalScale: {x: 0.03, y: 0.03, z: 0.03}
   m_Children:
   - {fileID: 3159023072599374889}
@@ -248,8 +248,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df85119bbca608542bff6edad4ab2e77, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_warpGimbal: {fileID: 3159023073271061837}
   m_canEnter: 0
-  m_hasPilot: 0
+  m_hasPilot: 1
   m_characterController: {fileID: 0}
   m_input:
     m_movementAxis: -1
@@ -259,7 +260,6 @@ MonoBehaviour:
     m_down: 115
     m_jump: 0
     m_space: 32
-  m_rigidbody: {fileID: 3159023072570266723}
   m_attractor: {fileID: 3159023072570266727}
   m_gimbals:
   - {fileID: 3159023073271061837}
@@ -433,7 +433,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3159023072801605461}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.7, z: 0}
+  m_LocalPosition: {x: 0, y: 1.3, z: 0}
   m_LocalScale: {x: 0.03, y: 0.03, z: 0.03}
   m_Children:
   - {fileID: 3159023072900618396}
@@ -587,20 +587,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5609b79553d1e93418a8fe3556748754, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_isActive: 0
+  m_desiredMovement: {x: 0, y: 0}
+  m_isActive: 1
+  m_attractor: {fileID: 3159023072570266727}
   m_positiveWarpPivot: {fileID: 3159023071781667792}
   m_negativeWarpPivot: {fileID: 3159023072118763978}
   m_positiveAttractor: {fileID: 3159023072801605467}
   m_negativeAttractor: {fileID: 3159023071604483093}
   m_rigidbody: {fileID: 3159023072570266723}
   m_targetSpeed: 20
-  m_accelerationTime: 0.5
-  m_normalizedPositiveMass: 0
-  m_normalizedNegativeMass: 0
-  m_maxPositiveMass: 0
-  m_maxNegativeMass: 0
-  m_currentNormalizedPositiveMass: 0
-  m_currentNormalizedNegativeMass: 0
+  m_accelerationTime: 0.2
   m_positiveSprite: {fileID: 3159023072900618397}
   m_negativeSprite: {fileID: 3159023072599374894}
   m_minPositiveSpriteColour: {r: 0, g: 0, b: 0.43529412, a: 0.43529412}
@@ -650,8 +646,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f28e637b9ad4c5498b16008fda88aaa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_joint1Length: 2
-  m_joint2Length: 2
+  m_joint1Length: 1
+  m_joint2Length: 3
   m_rotationConstraint: 1
   m_joint1Angle: 0
   m_joint2Angle: 0
@@ -701,6 +697,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c3ae9ad1022da94dbfcca3556910775, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_desiredMovement: {x: 0, y: 0}
   m_isActive: 0
   m_legSystem: {fileID: 5957565908102904183}
 --- !u!114 &5957565908102904183
@@ -841,8 +838,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f28e637b9ad4c5498b16008fda88aaa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_joint1Length: 2
-  m_joint2Length: 2
+  m_joint1Length: 1
+  m_joint2Length: 3
   m_rotationConstraint: 0
   m_joint1Angle: 0
   m_joint2Angle: 0

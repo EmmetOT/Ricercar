@@ -46,10 +46,14 @@ namespace Ricercar.InverseKinematics
             m_target = target;
         }
 
+        [Button]
         private void FlipAngles()
         {
-            m_joint2Angle = -m_joint2Angle;
-            m_joint1Angle -= m_joint2Angle;
+            m_joint1Angle = -(m_joint1Angle - 180f);
+            m_joint2Angle *= -1f;
+
+            //m_joint2Angle = -m_joint2Angle;
+            //m_joint1Angle -= m_joint2Angle;
         }
 
         /// <summary>
@@ -97,6 +101,7 @@ namespace Ricercar.InverseKinematics
         /// </summary>
         public Vector2 RunForwardKinematics(bool debug = false)
         {
+            float angleOffset = m_rotationConstraint == RotationConstraint.ANTICLOCKWISE ? -transform.eulerAngles.z : transform.eulerAngles.z;
             float angle = 0f;
             Vector2 previousPosition = transform.position;
 
@@ -108,7 +113,7 @@ namespace Ricercar.InverseKinematics
             void CalculateJoint(float angleIncrement, float jointLength)
             {
                 angle += angleIncrement;
-                Vector2 nextPosition = Utils.RotateAround(previousPosition + Vector2.right * jointLength, previousPosition, angle);
+                Vector2 nextPosition = Utils.RotateAround(previousPosition + (Vector2)transform.right * jointLength, previousPosition, angle + angleOffset);
 
                 if (debug)
                 {
