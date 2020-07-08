@@ -110,15 +110,15 @@
 				float ddyIn = ddy(gravityData.y);
 				float sum = ddxIn + ddyIn;
 
-				float4 col = float4(1, 1, 1, 1);
+				float4 col = float4(1, 1, 1, 1) * 0.1;
 
-				if (abs(sum) > 0.3)
-				{
+				//if (abs(sum) > 0.1)
+				//{
 					if (sum > 0)
-						col = lerp(col, float4(0, 0, 1, 1), abs(sum));
+						col = lerp(col, float4(0, 0, 1, 1), min(1, abs(sum)));
 					else 
-						col = lerp(col, float4(1, 0, 0, 1), abs(sum));
-				}
+						col = lerp(col, float4(1, 0, 0, 1), min(1, abs(sum)));
+				//}
 
 				float2 gravity = float2(gravityData.x, gravityData.y) * _EffectScalar;
 
