@@ -1,6 +1,7 @@
 ﻿using NaughtyAttributes;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,15 +14,21 @@ namespace Ricercar.Gravity
         public const UnityEngine.Experimental.Rendering.GraphicsFormat GRAPHICS_FORMAT = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat;
 
         private readonly List<IAttractor> m_attractors = new List<IAttractor>();
-        private readonly List<IBakedAttractor> m_bakedAttractors = new List<IBakedAttractor>();
+        private readonly List<BakedAttractor> m_bakedAttractors = new List<BakedAttractor>();
 
         [SerializeField]
         private ComputeShader m_gravityFieldComputeShader;
 
         private int m_computePointForcesKernel = -1;
 
+        private int m_computeSingleBakedAttractorForceKernel = -1;
+
         private Vector2[] m_attractorOutputData;
         private ComputeBuffer m_forcesOutputBuffer;
+
+        private readonly List<BakedAttractorData> m_singleBakedAttractorData = new List<BakedAttractorData>();
+        private Vector2[] m_singleBakedAttractorForcesOutputData;
+        private ComputeBuffer m_singleBakedAttractorForcesOutputBuffer;
 
         private readonly List<AttractorData> m_pointInputData = new List<AttractorData>();
         private readonly List<BakedAttractorData> m_bakedInputData = new List<BakedAttractorData>();
@@ -71,6 +78,13 @@ namespace Ricercar.Gravity
             m_emptyTextureArray.Apply();
 
             m_computePointForcesKernel = m_gravityFieldComputeShader.FindKernel("ComputeForces");
+
+            // set up the single baked attractor force kernel. this only needs to be done once because the count never changes
+            m_computeSingleBakedAttractorForceKernel = m_gravityFieldComputeShader.FindKernel("ComputeSingleBakedAttractorForce");
+            m_singleBakedAttractorForcesOutputData = new Vector2[1];
+            m_singleBakedAttractorForcesOutputBuffer = new ComputeBuffer(1, sizeof(float) * 2);
+            m_gravityFieldComputeShader.SetBuffer(m_computeSingleBakedAttractorForceKernel, "PointForces", m_singleBakedAttractorForcesOutputBuffer);
+
             RefreshComputeBuffers();
 
             m_gravityUpdateTime = Time.time;
@@ -96,8 +110,10 @@ namespace Ricercar.Gravity
 
         public void RegisterAttractor(IAttractor attractor)
         {
-            if (attractor is IBakedAttractor bakedAttractor)
+            if (attractor is BakedAttractor bakedAttractor)
             {
+                Debug.Log("Registering baked attractor: " + bakedAttractor.name, bakedAttractor);
+
                 if (m_bakedAttractors.Contains(bakedAttractor))
                     return;
 
@@ -117,7 +133,7 @@ namespace Ricercar.Gravity
 
         public void DeregisterAttractor(IAttractor attractor)
         {
-            if (attractor is IBakedAttractor bakedAttractor)
+            if (attractor is BakedAttractor bakedAttractor)
             {
                 if (m_bakedAttractors.Remove(bakedAttractor))
                 {
@@ -129,15 +145,6 @@ namespace Ricercar.Gravity
             {
                 if (m_attractors.Remove(attractor))
                 {
-                    if (attractor is SimpleRigidbodyAttractor simple)
-                    {
-                        Debug.Log("Succesfully removed: " + simple.name, simple);
-                    }
-                    else if (attractor is NonRigidbodyAttractor non)
-                    {
-                        Debug.Log("Succesfully removed: " + non.name, non);
-                    }
-
                     RefreshComputeBuffers();
                 }
             }
@@ -188,6 +195,8 @@ namespace Ricercar.Gravity
         /// </summary>
         private void BuildBakedAttractorTextureArray()
         {
+            Debug.Log("Building baked attractor texture array.");
+
             // first, generate the lookup
 
             m_bakedAttractorTextureGUIDToIndex.Clear();
@@ -212,6 +221,36 @@ namespace Ricercar.Gravity
             }
 
             Shader.SetGlobalTexture("BakedAttractorTextures", m_bakedAttractorTextureArray);
+        }
+
+        /// <summary>
+        /// Get the attraction of an object with mass 1 at the given position towards a specific baked attractor.
+        /// This method requires getting information from the GPU and so should be used sparingly.
+        /// </summary>
+        public Vector2 CalculateBakedAttractorForce(BakedAttractor attractor, Vector2 position)
+        {
+            m_singleBakedAttractorData.Clear();
+
+            BakedAttractorData data = new BakedAttractorData(attractor);
+
+            // get the index for the gravity map used by this baked attractor
+            if (m_bakedAttractorTextureGUIDToIndex.TryGetValue(attractor.GravityMap.GUID, out int index))
+                data.SetTextureIndex(index);
+            else
+                Debug.Log("Doesn't have it??? " + attractor.GravityMap.name, attractor.GravityMap);
+
+            m_singleBakedAttractorData.Add(data);
+
+            // set the data for the given baled attractor
+            m_bakedInputBuffer.SetData(m_singleBakedAttractorData);
+            m_gravityFieldComputeShader.SetVector("SingleBakedAttractorForceCheckPoint", position);
+
+            m_gravityFieldComputeShader.Dispatch(m_computeSingleBakedAttractorForceKernel, 1, 1, 1);
+            m_singleBakedAttractorForcesOutputBuffer.GetData(m_singleBakedAttractorForcesOutputData);
+
+            Vector2 result = m_singleBakedAttractorForcesOutputData[0];
+            Debug.Log("Result = " + result);
+            return result;
         }
 
         private void RunComputeShader()

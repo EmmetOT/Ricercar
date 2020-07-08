@@ -67,7 +67,6 @@ namespace Ricercar.Gravity
         private Material m_materialInstance;
 
         [SerializeField]
-        [MinValue(0f)]
         [OnValueChanged("OnEffectScalarChanged")]
         private float m_effectScalar = 0.01f;
 

@@ -9,35 +9,20 @@ using UnityEditor;
 
 namespace Ricercar.Gravity
 {
-    public class NonRigidbodyAttractor : MonoBehaviour, IAttractor
+    public class NonRigidbodyAttractor : Attractor
     {
         [SerializeField]
-        private GravityField m_gravityField;
-
-        [SerializeField]
         private float m_mass = 1f;
-        public float Mass => m_mass;
-
-        [SerializeField]
-        private bool m_applyForceToSelf = true;
-
-        [SerializeField]
-        private bool m_affectsField = true;
-        public bool AffectsField => m_affectsField && !Mathf.Approximately(m_mass, 0f);
-
-        [SerializeField]
-        private Transform m_transform;
+        public override float Mass => m_mass;
 
         [SerializeField]
         private bool m_drawGizmos = true;
 
-        public Vector2 Position => m_transform.position;
+        public override Vector2 Position => m_transform.position;
 
-        private Vector2 m_currentGravity = Vector2.zero;
-        public Vector2 CurrentGravity => m_currentGravity;
 
         private Vector2 m_velocity = Vector2.zero;
-        public Vector2 Velocity => m_velocity;
+        public override Vector2 Velocity => m_velocity;
 
         [SerializeField]
         private bool m_isShell = false;
@@ -54,9 +39,10 @@ namespace Ricercar.Gravity
         private float m_surfaceGravityForce = Mathf.Infinity;
         public float SurfaceGravityForce => (m_isShell && m_radius > 0f) ? m_surfaceGravityForce : 1f;
 
-        private void Reset()
+        protected override void Reset()
         {
-            m_transform = transform;
+            base.Reset();
+
             CalculateSurfaceGravity();
         }
 
@@ -65,30 +51,11 @@ namespace Ricercar.Gravity
             CalculateSurfaceGravity();
         }
 
-        public void Awake()
+        public override void SetMass(float mass)
         {
-            m_transform = transform;
-        }
+            base.SetMass(mass);
 
-        public void OnEnable()
-        {
-            if (m_gravityField == null)
-                m_gravityField = FindObjectOfType<GravityField>();
-
-            m_gravityField.RegisterAttractor(this);
-        }
-
-        public void OnDisable()
-        {
-            m_gravityField.DeregisterAttractor(this);
-        }
-
-        public void SetGravity(Vector2 gravity)
-        {
-            if (!m_applyForceToSelf)
-                return;
-
-            m_currentGravity = gravity;
+            m_mass = mass;
         }
 
         public void AddVelocity(Vector2 velocity)
@@ -103,16 +70,11 @@ namespace Ricercar.Gravity
 
         private void FixedUpdate()
         {
-            if (!m_applyForceToSelf)
+            if (!ApplyForceToSelf)
                 return;
 
-            m_velocity += (m_currentGravity * Time.deltaTime) / m_mass;
+            m_velocity += (CurrentGravity * Time.deltaTime) / m_mass;
             m_transform.position += (Vector3)m_velocity * Time.deltaTime;
-        }
-
-        public void SetMass(float mass)
-        {
-            m_mass = mass;
         }
 
         [Button]
@@ -127,13 +89,9 @@ namespace Ricercar.Gravity
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
         }
 
-        public Vector2 GetGravityFrom(Vector2 pos)
+        public override Vector2 GetAttractionFromPosition(Vector2 pos, float mass)
         {
-            return GetGravityFromMass(pos, m_mass);
-        }
-
-        public Vector2 GetGravityFromMass(Vector2 pos, float mass)
-        {
+            // todo: implement the shell part of this
             Vector2 displacement = ((Vector2)m_transform.position - pos);
             float sqrDist = displacement.sqrMagnitude;
 

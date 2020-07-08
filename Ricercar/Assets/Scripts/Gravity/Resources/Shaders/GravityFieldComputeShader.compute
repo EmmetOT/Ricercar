@@ -1,6 +1,7 @@
 ﻿#include "Assets/Scripts/Gravity/Resources/Shaders/GravityShaderResources.cginc"
 #pragma kernel ComputeFullField
 #pragma kernel ComputeForces
+#pragma kernel ComputeSingleBakedAttractorForce
 
 #define THREAD_GROUP_SQRT 16
 #define THREAD_GROUP_SIZE 256
@@ -26,6 +27,21 @@ RWTexture2D<float4> GravityFieldOutputTexture;
 float2 BottomLeft;
 float2 TopRight;
 
+float2 SingleBakedAttractorForceCheckPoint;
+
+[numthreads(1, 1, 1)]
+void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
+{
+    float2 position = SingleBakedAttractorForceCheckPoint;
+
+    BakedAttractorData data = BakedAttractors[0];
+
+    float2 origin = float2(data.size, data.size) * 0.5;
+    float3 result = CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, 1);
+
+    PointForces[id.x] = result;
+}
+
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
@@ -43,29 +59,25 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         float2 otherPosition = float2(data.x + doNotCount, data.y + doNotCount);
 
         float otherMass = data.mass;
+        
+        float distance = length(otherPosition - position);
 
-        float3 calculation = CalculateGravity(otherPosition, position, otherMass, 1);
+        float3 calculation = CalculateGravity(otherPosition, position, otherMass, 1) / distance;
         float2 gravity = float2(calculation.x, calculation.y);
 
         float gravityMagnitude = length(gravity);
         float2 gravityDirection = normalize(gravity);
 
-        float distance = length(otherPosition - position);
         float shellGravity = lerp(0, data.surfaceGravityForce, distance / max(data.radius, EPSILON));
         int insideShell = when_lt(distance, data.radius);
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
-        
-        //float towardsiness = dot(normalize(gravityForce), direction) * finalMagnitude;
-        
-        //validAttractors += 1 - isnan(towardsiness);
 
-        // not entirely sure whether this counts as branching,
-        // i need a way to convert a nan to a zero.
-        // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
-        //towardsiness = isnan(towardsiness) ? 0 : towardsiness;
+        //float2 displacement = (otherPosition - position);
+        //float sqrDist = dot(displacement, displacement);
+        //float2 gravityDirection = normalize(displacement);
+        //float gravityMagnitude = (G * otherMass * 0.1);// / sqrt(sqrDist);
 
-        //result += float3(gravityForce.x, gravityForce.y, towardsiness);
         result += float3((1 - doNotCount) * gravityMagnitude * gravityDirection, 0);
 	}
     
@@ -78,7 +90,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         BakedAttractorData data = BakedAttractors[j];
         float2 pivot = (globalOffset - data.position) * globalScalar;
 
-        result += CalculateGravity(BakedAttractorTextures, BakedAttractors[j], id.xy, globalScalar, pivot, position, 1);
+        result += CalculateGravity(BakedAttractorTextures, data, id.xy, globalScalar, pivot, position, 1);
 	}
 
     //result.z /= validAttractors;

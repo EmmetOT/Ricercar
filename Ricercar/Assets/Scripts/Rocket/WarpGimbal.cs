@@ -24,10 +24,10 @@ namespace Ricercar.Character
         private Transform m_negativeWarpPivot;
 
         [SerializeField]
-        private NonRigidbodyAttractor m_positiveAttractor;
+        private Attractor m_positiveAttractor;
 
         [SerializeField]
-        private NonRigidbodyAttractor m_negativeAttractor;
+        private Attractor m_negativeAttractor;
 
         [SerializeField]
         private Rigidbody2D m_rigidbody;
@@ -42,7 +42,12 @@ namespace Ricercar.Character
 
         // the gravity vectors towards the two attractors if theyre positioned
         // at their resting position with a mass of 1
+        [SerializeField]
+        [ReadOnly]
         private Vector2 m_positiveAttractorGravityVector;
+
+        [SerializeField]
+        [ReadOnly]
         private Vector2 m_negativeAttractorGravityVector;
 
         private float m_normalizedPositiveMass;
@@ -52,6 +57,11 @@ namespace Ricercar.Character
         private float m_maxPositiveMass;
 
         private float m_maxNegativeMass;
+
+        private MaterialPropertyBlock m_spriteTintMPB;
+        private MaterialPropertyBlock SpriteTintMPB => m_spriteTintMPB == null ? m_spriteTintMPB = new MaterialPropertyBlock() : m_spriteTintMPB;
+
+        private static readonly int m_spriteTintProperty = Shader.PropertyToID("_Tint");
 
         private float m_currentNormalizedPositiveMass;
 
@@ -84,8 +94,9 @@ namespace Ricercar.Character
 
         private void Start()
         {
-            m_positiveAttractorGravityVector = m_positiveAttractor.GetGravityFromMass(m_rigidbody.position, 1f);
-            m_negativeAttractorGravityVector = m_negativeAttractor.GetGravityFromMass(m_rigidbody.position, 1f);
+            Debug.Log("Getting baked vectors...");
+            m_positiveAttractorGravityVector = m_positiveAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
+            m_negativeAttractorGravityVector = m_negativeAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
 
             // set the positive attractors mass such that it accelerates to the target speed in the target amount of time
             m_normalizedPositiveMass = 1f / m_positiveAttractorGravityVector.magnitude;
@@ -117,8 +128,8 @@ namespace Ricercar.Character
 
         public Vector2 GetCurrentWarpInfluence()
         {
-            Vector2 positiveInfluence = m_positiveAttractor.Mass * Utils.RotateAround(m_positiveAttractorGravityVector, Vector2.zero, m_positiveWarpPivot.eulerAngles.z);
-            Vector2 negativeInfluence = m_negativeAttractor.Mass * Utils.RotateAround(m_negativeAttractorGravityVector, Vector2.zero, m_negativeWarpPivot.eulerAngles.z);
+            Vector2 positiveInfluence = m_attractor.Mass * m_positiveAttractor.Mass * Utils.RotateAround(m_positiveAttractorGravityVector, Vector2.zero, m_positiveWarpPivot.eulerAngles.z);
+            Vector2 negativeInfluence = m_attractor.Mass * m_negativeAttractor.Mass * Utils.RotateAround(m_negativeAttractorGravityVector, Vector2.zero, m_negativeWarpPivot.eulerAngles.z);
 
             return positiveInfluence + negativeInfluence;
         }
@@ -135,13 +146,12 @@ namespace Ricercar.Character
             if (!m_isActive)
                 return;
 
-            m_gravityWithoutWarpInfluence = m_accelerationTime * (m_attractor.CurrentGravity - GetCurrentWarpInfluence()) / m_attractor.Mass;
+            m_gravityWithoutWarpInfluence = m_accelerationTime * (m_attractor.CurrentGravity - GetCurrentWarpInfluence());
 
             Quaternion rotation = Quaternion.FromToRotation(Vector2.up, -m_gravityWithoutWarpInfluence.normalized);
 
             Vector2 desiredVelocity = rotation * (m_desiredMovement * m_targetSpeed);
 
-            // what is this 0.2 value??? why does it work???
             Vector2 currentVelocity = m_rigidbody.velocity + m_gravityWithoutWarpInfluence;
 
             m_positiveWarpPivot.up = desiredVelocity.normalized;
@@ -159,8 +169,17 @@ namespace Ricercar.Character
             m_currentNormalizedPositiveMass = Mathf.InverseLerp(0f, m_maxPositiveMass, positiveMass);
             m_currentNormalizedNegativeMass = Mathf.InverseLerp(0f, -m_maxNegativeMass, -negativeMass);
 
-            m_positiveSprite.color = Color.Lerp(m_minPositiveSpriteColour, m_maxPositiveSpriteColour, m_currentNormalizedPositiveMass);
-            m_negativeSprite.color = Color.Lerp(m_minNegativeSpriteColour, m_maxNegativeSpriteColour, m_currentNormalizedNegativeMass);
+            Color posColour = Color.Lerp(m_minPositiveSpriteColour, m_maxPositiveSpriteColour, m_currentNormalizedPositiveMass);
+            Color negColour = Color.Lerp(m_minNegativeSpriteColour, m_maxNegativeSpriteColour, m_currentNormalizedNegativeMass);
+
+            //SpriteTintMPB.SetColor(m_spriteTintProperty, posColour);
+            //m_positiveSprite.SetPropertyBlock(SpriteTintMPB);
+
+            //SpriteTintMPB.SetColor(m_spriteTintProperty, negColour);
+            //m_negativeSprite.SetPropertyBlock(SpriteTintMPB);
+
+            m_positiveSprite.color = posColour;
+            m_negativeSprite.color = negColour;
         }
 
         protected override void OnSpaceDown()

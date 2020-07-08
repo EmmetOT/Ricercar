@@ -113,8 +113,6 @@ namespace Ricercar.Character
 
         private void OnSpaceUp()
         {
-            Debug.Log("Space up in rocket!");
-
             if (m_hasPilot)
             {
                 for (int i = 0; i < m_gimbals.Length; i++)

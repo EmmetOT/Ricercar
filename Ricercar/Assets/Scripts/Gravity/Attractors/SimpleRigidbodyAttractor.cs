@@ -9,29 +9,13 @@ using UnityEditor;
 
 namespace Ricercar.Gravity
 {
-    public class SimpleRigidbodyAttractor : MonoBehaviour, ISimpleAttractor
+    public class SimpleRigidbodyAttractor : Attractor, ISimpleAttractor
     {
-        private bool m_canReceiveGravity = false;
-
-        [SerializeField]
-        protected GravityField m_gravityField;
-
-        [SerializeField]
-        private bool m_applyForceToSelf = true;
-        public bool ApplyForceToSelf => m_applyForceToSelf;
-
-        [SerializeField]
-        private bool m_affectsField = true;
-        public bool AffectsField => m_affectsField;
-
         [SerializeField]
         private bool m_useRigidbodyPosition = false;
 
         [SerializeField]
         private bool m_drawGizmos = true;
-
-        [SerializeField]
-        private Vector2 m_startingForce;
 
         [SerializeField]
         private Rigidbody2D m_rigidbody;
@@ -59,22 +43,14 @@ namespace Ricercar.Gravity
         private float m_surfaceGravityForce = 1f;
         public float SurfaceGravityForce => (m_isShell && m_radius > 0f) ? m_surfaceGravityForce : 1f;
 
-        [SerializeField]
-        [HideInInspector]
-        private Transform m_transform;
+        public override float Mass => m_useRigidbodyMass ? m_rigidbody.mass : m_mass;
+        public override Vector2 Position => m_useRigidbodyPosition ? m_rigidbody.position : (Vector2)m_transform.position;
+        public override Vector2 Velocity => m_rigidbody.velocity;
 
-        public float Mass => m_useRigidbodyMass ? m_rigidbody.mass : m_mass;
-        public Vector2 Position => m_useRigidbodyPosition ? m_rigidbody.position : (Vector2)m_transform.position;
-        public Vector2 Velocity => m_rigidbody.velocity;
-
-        [SerializeField]
-        [ReadOnly]
-        private Vector2 m_currentGravity;
-        public Vector2 CurrentGravity => m_currentGravity;
-
-        private void Reset()
+        protected override void Reset()
         {
-            m_transform = transform;
+            base.Reset();
+
             m_rigidbody = GetComponent<Rigidbody2D>();
             CalculateSurfaceGravity();
         }
@@ -84,44 +60,21 @@ namespace Ricercar.Gravity
             CalculateSurfaceGravity();
         }
 
-        private void OnEnable()
+        public override void SetGravity(Vector2 gravity)
         {
-            m_transform = transform;
-            m_gravityField.RegisterAttractor(this);
+            base.SetGravity(gravity);
+
+            m_rigidbody.AddForce(CurrentGravity);
         }
 
-        private void OnDisable()
+        public override void SetMass(float mass)
         {
-            m_gravityField.DeregisterAttractor(this);
-        }
+            base.SetMass(mass);
 
-        private IEnumerator Start()
-        {
-            yield return null;
-            m_canReceiveGravity = true;
-        }
-
-        public void SetGravity(Vector2 gravity)
-        {
-            // for some unclear reason, gravity from the previous play session can
-            // "leak in" during the first frame
-            if (!m_canReceiveGravity)
-                return;
-
-            m_currentGravity = gravity;
-
-            if (!m_applyForceToSelf)
-                return;
-
-            m_rigidbody.AddForce(m_currentGravity);
-        }
-
-        public void SetMass(float mass)
-        {
             m_mass = mass;
 
             if (m_useRigidbodyMass)
-                m_rigidbody.mass = Mathf.Abs(mass);
+                m_rigidbody.mass = Mathf.Abs(m_mass);
         }
 
         [Button("Calculate Surface Gravity")]
@@ -136,10 +89,13 @@ namespace Ricercar.Gravity
             m_surfaceGravityForce = GravityField.G * m_mass / (m_radius * m_radius);
         }
 
-        [Button("Print GPU Data")]
-        public void PrintGPUData()
+        public override Vector2 GetAttractionFromPosition(Vector2 pos, float mass)
         {
-            Debug.Log(new AttractorData(this));
+            // todo: implement the shell part of this
+            Vector2 displacement = ((Vector2)m_transform.position - pos);
+            float sqrDist = displacement.sqrMagnitude;
+
+            return displacement.normalized * (GravityField.G * mass / sqrDist);
         }
 
 #if UNITY_EDITOR
