@@ -29,6 +29,9 @@ float2 TopRight;
 
 float2 SingleBakedAttractorForceCheckPoint;
 
+int FullFieldSampleWidth;
+int FullFieldSampleHeight;
+
 [numthreads(1, 1, 1)]
 void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
 {
@@ -45,7 +48,7 @@ void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
-    float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (THREAD_GROUP_SIZE - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (THREAD_GROUP_SIZE - 1.0)));
+    float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (FullFieldSampleWidth - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (FullFieldSampleHeight - 1.0)));
 
     float3 result = float3(0, 0, 0);
     

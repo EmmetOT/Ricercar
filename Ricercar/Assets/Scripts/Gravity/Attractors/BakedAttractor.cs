@@ -99,6 +99,11 @@ namespace Ricercar.Gravity
                 m_rigidbody.mass = Mathf.Abs(mass);
         }
 
+        public override Vector2 GetAttractionFromPosition(Vector2 pos, float mass)
+        {
+            return m_gravityField.CalculateBakedAttractorForce(this, pos) * mass;
+        }
+
         private bool HasRigidbody() => m_rigidbody != null;
 
 #if UNITY_EDITOR
@@ -127,18 +132,11 @@ namespace Ricercar.Gravity
 
             Gizmos.matrix = Matrix4x4.TRS(translate, rotation, Vector3.one);
 
-            Gizmos.color = Color.white;
-            Gizmos.DrawSphere(m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity), 5f);
+            //Gizmos.color = Color.white;
+            //Gizmos.DrawSphere(m_gravityMap.TextureSpaceToWorldSpace(m_gravityMap.CentreOfGravity), 5f);
 
             Gizmos.matrix = matrix;
         }
-
-        public override Vector2 GetAttractionFromPosition(Vector2 pos, float mass)
-        {
-            Debug.Log("Calling method in baked attractor " + name, this);
-            return m_gravityField.CalculateBakedAttractorForce(this, pos) * mass;
-        }
-
 #endif
     }
 

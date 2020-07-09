@@ -160,10 +160,11 @@ namespace Ricercar
             return tex;
         }
 
-        public static RenderTexture CreateTempRenderTexture(int width, int height, Color? col = null, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null)
+        public static RenderTexture CreateTempRenderTexture(int width, int height, Color? col = null, UnityEngine.Experimental.Rendering.GraphicsFormat? format = null, int antiAliasing = 1)
         {
             RenderTexture texture = RenderTexture.GetTemporary(width, height, 24);
             texture.enableRandomWrite = true;
+            texture.antiAliasing = antiAliasing;
 
             if (format != null)
                 texture.graphicsFormat = format.Value;

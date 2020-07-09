@@ -11,94 +11,116 @@ namespace Ricercar.Gravity
 {
     public class GravityVisualizer : MonoBehaviour
     {
-        private enum PowerOfTwoResolution 
-        { 
-            _16 = 16,
-            _32 = 32,
-            _64 = 64,
-            _128 = 128,
-            _256 = 256,
-            _512 = 512,
-            _1024 = 1024,
-            _2048 = 2048,
-            _4096 = 4096,
-        };
-
-        //// 256 x 256 = 16 x 16 x 16 x 16
-        //private const int THREAD_GROUPS = 65536;
-
-        //private const int THREAD_GROUPS_SQRT = 16;
-
-        private const string POINT_ARRAY_PROPERTY = "_Points";
-        private const string FIELD_SIZE_PROPERTY = "_FieldSize";
         private const string EFFECT_SCALAR_PROPERTY = "_EffectScalar";
         private const string GRID_SCALE_PROPERTY = "_GridScale";
+        private const string POSITIVE_GRAVITY_COLOUR_PROPERTY = "_PositiveGravityColour";
+        private const string NEGATIVE_GRAVITY_COLOUR_PROPERTY = "_NegativeGravityColour";
+        private const string GRAVITY_AURA_SIZE_PROPERTY = "_GravityAuraSize";
+
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
         public enum ColourMode
         {
-            Distortion,
-            Legible
+            DISTORTED_TEXTURE,
+            GRAVITY
         }
 
         [SerializeField]
+        [BoxGroup("Components")]
         private GravityField m_gravityField;
 
         private Transform m_transform;
 
         [SerializeField]
+        [BoxGroup("Components")]
         private ComputeShader m_gravityFieldComputeShader;
 
         private int m_computeFullFieldKernel = -1;
 
         [SerializeField]
+        [BoxGroup("Components")]
         private Canvas m_canvas;
         private RectTransform m_canvasRectTransform;
 
         [SerializeField]
+        [BoxGroup("Components")]
         private RawImage m_rawImage;
 
         [SerializeField]
-        private Texture m_background;
-
-        [SerializeField]
+        [BoxGroup("Components")]
         private Material m_material;
-        [SerializeField]
         private Material m_materialInstance;
 
         [SerializeField]
+        [BoxGroup("Visual Settings")]
+        private Texture m_background;
+
+        [SerializeField]
         [OnValueChanged("OnEffectScalarChanged")]
+        [BoxGroup("Visual Settings")]
         private float m_effectScalar = 0.01f;
 
         [SerializeField]
         [OnValueChanged("OnGridScaleChanged")]
+        [BoxGroup("Visual Settings")]
         private float m_gridScale = 0.2f;
 
         [SerializeField]
         [MinValue(1f)]
-        [OnValueChanged("OnMoved")]
-        private float m_size = 256f;
+        [BoxGroup("Visual Settings")]
+        [OnValueChanged("OnCanvasWidthChanged")]
+        private float m_canvasWidth = 20f;
 
         [SerializeField]
-        private PowerOfTwoResolution m_gravitySampleResolution = PowerOfTwoResolution._256;
+        [BoxGroup("Visual Settings")]
+        [OnValueChanged("ApplyColourSettings")]
+        private Color m_positiveGravityColour;
 
         [SerializeField]
-        private PowerOfTwoResolution m_textureResolution = PowerOfTwoResolution._512;
+        [BoxGroup("Visual Settings")]
+        [OnValueChanged("ApplyColourSettings")]
+        private Color m_negativeGravityColour;
 
         [SerializeField]
-        [OnValueChanged("OnColourModeChanged")]
+        [BoxGroup("Visual Settings")]
+        [MinValue(0f)]
+        [OnValueChanged("ApplyAuraSize")]
+        private float m_auraSize = 1f;
+
+        [SerializeField]
+        [OnValueChanged("ApplyColourSettings")]
+        [BoxGroup("Visual Settings")]
         private ColourMode m_colourMode;
 
         [SerializeField]
+        [MinValue(16)]
+        [BoxGroup("Sample Size")]
+        private int m_sampleWidth;
+
+        [SerializeField]
+        [MinValue(16)]
+        [BoxGroup("Sample Size")]
+        private int m_sampleHeight;
+
+        private float AspectRatio => (float)m_sampleHeight / m_sampleWidth;
+
+        private float CanvasHeight => m_canvasWidth * AspectRatio;
+
+        private Vector2 CanvasSize => new Vector2(m_canvasWidth, CanvasHeight);
+
+        [SerializeField]
         [ReadOnly]
+        [BoxGroup("State")]
         private Vector2 m_bottomLeft;
 
         [SerializeField]
         [ReadOnly]
+        [BoxGroup("State")]
         private Vector2 m_topRight;
 
         [SerializeField]
         [ReadOnly]
+        [BoxGroup("State")]
         private RenderTexture m_renderTexture;
 
         private bool m_initialized = false;
@@ -116,23 +138,22 @@ namespace Ricercar.Gravity
 
             m_computeFullFieldKernel = m_gravityFieldComputeShader.FindKernel("ComputeFullField");
 
-            m_renderTexture = Utils.CreateTempRenderTexture((int)m_gravitySampleResolution, (int)m_gravitySampleResolution, format: GravityField.GRAPHICS_FORMAT);
+            m_renderTexture = Utils.CreateTempRenderTexture(m_sampleWidth, m_sampleHeight, format: GravityField.GRAPHICS_FORMAT);
 
             m_gravityFieldComputeShader.SetTexture(m_computeFullFieldKernel, "GravityFieldOutputTexture", m_renderTexture);
 
             m_materialInstance = new Material(m_material);
             m_materialInstance.SetFloat(GRID_SCALE_PROPERTY, m_gridScale);
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
-            m_materialInstance.SetInt(FIELD_SIZE_PROPERTY, (int)m_gravitySampleResolution);
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 
-            if (m_colourMode == ColourMode.Distortion)
-                m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
-            else
-                m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+            ApplyColourSettings();
+            ApplyAuraSize();
 
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
+            m_gravityFieldComputeShader.SetInt("FullFieldSampleWidth", m_sampleWidth);
+            m_gravityFieldComputeShader.SetInt("FullFieldSampleHeight", m_sampleHeight);
 
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 
@@ -160,7 +181,7 @@ namespace Ricercar.Gravity
             if (!m_initialized)
                 return;
 
-            if (m_transform.hasChanged || m_size != m_canvasRectTransform.rect.width)
+            if (m_transform.hasChanged || m_canvasRectTransform.sizeDelta != CanvasSize)
             {
                 OnMoved();
                 m_transform.hasChanged = false;
@@ -170,28 +191,31 @@ namespace Ricercar.Gravity
                 return;
 
             // only really need to do this when an attractor or this visualizer moves
-            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_gravitySampleResolution / 16, (int)m_gravitySampleResolution / 16, 1);
+            m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_sampleWidth / 16, (int)m_sampleHeight / 16, 1);
         }
 
         public Vector2 GetTopRight()
         {
-            return (Vector2)m_transform.position + Vector2.one * m_size * 0.5f;
+            return (Vector2)m_transform.position + CanvasSize * 0.5f;
         }
 
         public Vector2 GetBottomLeft()
         {
-            return (Vector2)m_transform.position - Vector2.one * m_size * 0.5f;
+            return (Vector2)m_transform.position - CanvasSize * 0.5f;
         }
 
-        private void OnColourModeChanged()
+        private void ApplyColourSettings()
         {
             if (m_materialInstance == null)
                 return;
 
-            if (m_colourMode == ColourMode.Distortion)
+            if (m_colourMode == ColourMode.DISTORTED_TEXTURE)
                 m_materialInstance.EnableKeyword(IS_DISTORTION_MAP_PROPERTY);
             else
                 m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
+
+            m_materialInstance.SetColor(POSITIVE_GRAVITY_COLOUR_PROPERTY, m_positiveGravityColour);
+            m_materialInstance.SetColor(NEGATIVE_GRAVITY_COLOUR_PROPERTY, m_negativeGravityColour);
         }
 
         private void OnMoved()
@@ -199,9 +223,9 @@ namespace Ricercar.Gravity
             m_bottomLeft = GetBottomLeft();
             m_topRight = GetTopRight();
 
-            m_canvasRectTransform.sizeDelta = Vector2.one * m_size;
-            m_gravityFieldComputeShader?.SetVector("BottomLeft", m_bottomLeft);
-            m_gravityFieldComputeShader?.SetVector("TopRight", m_topRight);
+            m_canvasRectTransform.sizeDelta = CanvasSize;
+            m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
+            m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
         }
 
         private void OnGridScaleChanged()
@@ -212,6 +236,17 @@ namespace Ricercar.Gravity
         private void OnEffectScalarChanged()
         {
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
+        }
+
+        private void OnCanvasWidthChanged()
+        {
+            m_canvasRectTransform = m_canvas.transform as RectTransform;
+            m_canvasRectTransform.sizeDelta = CanvasSize;
+        }
+
+        private void ApplyAuraSize()
+        {
+            m_materialInstance.SetFloat(GRAVITY_AURA_SIZE_PROPERTY, m_auraSize);
         }
     }
 
