@@ -131,7 +131,7 @@ float4 SampleBilinear(Texture2DArray<float4> t, int texIndex, float2 uv)
     return lerp(tA, tB, f.y);
 }
 	
-float3 CalculateGravity(float2 to, float2 from, float massOne, float massTwo)
+float2 CalculateGravity(float2 to, float2 from, float massOne, float massTwo)
 {
     // adding a tiny number prevents NaN
     float2 difference = (to - from) + EPSILON;
@@ -141,17 +141,10 @@ float3 CalculateGravity(float2 to, float2 from, float massOne, float massTwo)
     float forceMagnitude = (G * massOne * massTwo) / sqrMagnitude;
     float2 gravityForce = (direction * forceMagnitude);
 
-    float towardsiness = dot(normalize(gravityForce), direction) * forceMagnitude;
-        
-    // not entirely sure whether this counts as branching,
-    // i need a way to convert a nan to a zero.
-    // https://stackoverflow.com/questions/4911400/shader-optimization-is-a-ternary-operator-equivalent-to-branching
-    towardsiness = 0;//isnan(towardsiness) ? 0 : towardsiness;
-
-    return float3(gravityForce, towardsiness);
+    return gravityForce;
 }
 
-float3 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
+float2 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
 {
     int doNotCount = data.ignore;
     float scale = data.scale;
@@ -175,15 +168,14 @@ float3 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data
     float2 bakedForce = mul(float2(gravityForce.x, gravityForce.y), rotation);
     
     // next calculate the normal point gravity towards the centre of gravity
-    float3 calculation = CalculateGravity(data.centreOfGravity, pointPosition, data.mass, 1);
-    float2 pointGravity = float2(calculation.x, calculation.y);
+    float2 pointGravity = CalculateGravity(data.centreOfGravity, pointPosition, data.mass, 1);
 
-    float2 pointForce = (1 - doNotCount) * pointGravity;
+    //float2 pointForce = pointGravity;
 
     // this determines whether we're inside or outside the baked texture
     float isOutsideBounds = or(or(when_le(coord.x, 1), when_le(coord.y, 1)), or(when_ge(coord.x, data.size - 1), when_ge(coord.y, data.size - 1)));
 
-    return float3(lerp(bakedForce, pointForce, isOutsideBounds), 0);
+    return (1 - doNotCount) * lerp(bakedForce, pointGravity, isOutsideBounds);
 }
 
 float2 ProjectPointOnLineSegment(float2 a, float2 b, float2 p)

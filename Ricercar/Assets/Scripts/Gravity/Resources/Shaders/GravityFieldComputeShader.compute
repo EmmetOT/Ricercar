@@ -40,9 +40,8 @@ void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
     BakedAttractorData data = BakedAttractors[0];
 
     float2 origin = float2(data.size, data.size) * 0.5;
-    float3 result = CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, 1);
 
-    PointForces[id.x] = result;
+    PointForces[id.x] = CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, 1);
 }
 
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
@@ -50,7 +49,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
     float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (FullFieldSampleWidth - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (FullFieldSampleHeight - 1.0)));
 
-    float3 result = float3(0, 0, 0);
+    float2 result = float2(0, 0);
     
     int validAttractors = 0;
 
@@ -65,8 +64,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         
         float distance = length(otherPosition - position);
 
-        float3 calculation = CalculateGravity(otherPosition, position, otherMass, 1) / distance;
-        float2 gravity = float2(calculation.x, calculation.y);
+        float2 gravity = CalculateGravity(otherPosition, position, otherMass, 1) / distance;
 
         float gravityMagnitude = length(gravity);
         float2 gravityDirection = normalize(gravity);
@@ -81,7 +79,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         //float2 gravityDirection = normalize(displacement);
         //float gravityMagnitude = (G * otherMass * 0.1);// / sqrt(sqrDist);
 
-        result += float3((1 - doNotCount) * gravityMagnitude * gravityDirection, 0);
+        result += (1 - doNotCount) * gravityMagnitude * gravityDirection;
 	}
     
     float2 globalOffset = (TopRight + BottomLeft) * 0.5; // centre 
@@ -96,8 +94,6 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         result += CalculateGravity(BakedAttractorTextures, data, id.xy, globalScalar, pivot, position, 1);
 	}
 
-    //result.z /= validAttractors;
-    
     GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
 }
 		
@@ -134,8 +130,7 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
         
         float otherMass = data.mass;
 
-        float3 calculation = CalculateGravity(otherPosition, position, otherMass, mass);
-        float2 gravity = float2(calculation.x, calculation.y);
+        float2 gravity = CalculateGravity(otherPosition, position, otherMass, mass);
 
         float gravityMagnitude = length(gravity);
         float2 gravityDirection = normalize(gravity);

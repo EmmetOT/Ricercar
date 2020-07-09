@@ -43,7 +43,7 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
 
     float2 position = float2(id.x, id.y);
 
-    float3 totalGravityForce = float3(0, 0, 0);
+    float2 totalGravityForce = float2(0, 0);
 
     uint inputXOffset = (DEFAULT_BAKED_SIZE - InputWidth) / 2;
     uint inputYOffset = (DEFAULT_BAKED_SIZE - InputHeight) / 2;
@@ -66,9 +66,9 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
 
         // mass is normalized by total 'mass' (sum of alpha values) so resulting map will always have an
         // overall mass of 1
-        float3 calculation = CalculateGravity(texelPosition, position, texel.a / massDistribution, 1.0);
+        float2 calculation = CalculateGravity(texelPosition, position, texel.a / massDistribution, 1.0);
 
-        totalGravityForce += float3(notSameTexel * calculation.x, notSameTexel * calculation.y, calculation.z);
+        totalGravityForce += notSameTexel * calculation;
 	}
 
     // we also take note of how much this texel contributes to the centre of mass of the input
@@ -78,5 +78,5 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
     InterlockedAdd(MassDistributionOutput[1], (int)(centreOfMassContribution.x * MULTIPLICATION_FACTOR));
     InterlockedAdd(MassDistributionOutput[2], (int)(centreOfMassContribution.y * MULTIPLICATION_FACTOR));
 
-    GravityMapOutput[position] = float4(totalGravityForce, 1);
+    GravityMapOutput[position] = float4(totalGravityForce, 0, 1);
 }
