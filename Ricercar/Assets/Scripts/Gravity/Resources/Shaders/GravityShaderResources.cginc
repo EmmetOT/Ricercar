@@ -109,11 +109,11 @@ float2 Transform(float2 uv, float2 pivot, float rotation, float scale)
     return uv;
 }
 		
-float2 Transform(float2 uv, float2 pivot, float2x2 rotation, float scale)
+float2 Transform(float2 uv, float2 pivot, float2x2 rotation, float2 scale)
 {
     uv -= pivot;
+    uv = float2(uv.x / scale.x, uv.y / scale.y);
     uv = mul(rotation, uv);
-    uv /= scale;
     uv += pivot;
 
     return uv;
@@ -144,15 +144,15 @@ float2 CalculateGravity(float2 to, float2 from, float massOne, float massTwo)
     return gravityForce;
 }
 
-float2 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
+float2 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float2 globalScalar, float2 scaledWorldPos, float2 pointPosition, float pointMass)
 {
     int doNotCount = data.ignore;
     float scale = data.scale;
-    float scaleSampler = globalScalar * scale;
+    float2 scaleSampler = globalScalar * scale;
     float2 origin = float2(data.size, data.size) * 0.5;
     float2x2 rotation = GetRotationMatrix(-data.rotation * DEGREES_TO_RADIANS);
 
-    float2 coord = Transform(uvPosition, origin - pivot, rotation, scaleSampler) + pivot;
+    float2 coord = Transform(uvPosition, origin - scaledWorldPos, rotation, scaleSampler) + scaledWorldPos;
 
     // first, we transform the texture and sample it to get the force "baked in"
     float4 texData = SampleBilinear(textures, data.textureIndex, coord);
@@ -169,8 +169,6 @@ float2 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data
     
     // next calculate the normal point gravity towards the centre of gravity
     float2 pointGravity = CalculateGravity(data.centreOfGravity, pointPosition, data.mass, 1);
-
-    //float2 pointForce = pointGravity;
 
     // this determines whether we're inside or outside the baked texture
     float isOutsideBounds = or(or(when_le(coord.x, 1), when_le(coord.y, 1)), or(when_ge(coord.x, data.size - 1), when_ge(coord.y, data.size - 1)));

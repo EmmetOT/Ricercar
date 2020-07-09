@@ -112,8 +112,6 @@ namespace Ricercar.Gravity
         {
             if (attractor is BakedAttractor bakedAttractor)
             {
-                Debug.Log("Registering baked attractor: " + bakedAttractor.name, bakedAttractor);
-
                 if (m_bakedAttractors.Contains(bakedAttractor))
                     return;
 
@@ -195,8 +193,6 @@ namespace Ricercar.Gravity
         /// </summary>
         private void BuildBakedAttractorTextureArray()
         {
-            Debug.Log("Building baked attractor texture array.");
-
             // first, generate the lookup
 
             m_bakedAttractorTextureGUIDToIndex.Clear();

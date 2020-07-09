@@ -152,8 +152,7 @@ namespace Ricercar.Gravity
 
             m_gravityFieldComputeShader.SetVector("BottomLeft", m_bottomLeft);
             m_gravityFieldComputeShader.SetVector("TopRight", m_topRight);
-            m_gravityFieldComputeShader.SetInt("FullFieldSampleWidth", m_sampleWidth);
-            m_gravityFieldComputeShader.SetInt("FullFieldSampleHeight", m_sampleHeight);
+            m_gravityFieldComputeShader.SetVector("FullFieldSampleSize", new Vector2(m_sampleWidth, m_sampleHeight));
 
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 

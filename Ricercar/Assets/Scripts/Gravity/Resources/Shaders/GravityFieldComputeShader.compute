@@ -5,6 +5,7 @@
 
 #define THREAD_GROUP_SQRT 16
 #define THREAD_GROUP_SIZE 256
+#define DEFAULT_BAKED_SIZE 256
 
 // 2d positions where z corresponds to mass of the point
 uniform StructuredBuffer<AttractorData> PointAttractors : register(t1);
@@ -29,8 +30,8 @@ float2 TopRight;
 
 float2 SingleBakedAttractorForceCheckPoint;
 
-int FullFieldSampleWidth;
-int FullFieldSampleHeight;
+// the size of the sample grid
+float2 FullFieldSampleSize;
 
 [numthreads(1, 1, 1)]
 void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
@@ -47,12 +48,11 @@ void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_SQRT, THREAD_GROUP_SQRT, 1)]
 void ComputeFullField(uint3 id : SV_DispatchThreadID)
 {
-    float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (FullFieldSampleWidth - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (FullFieldSampleHeight - 1.0)));
+    // get the position in world space
+    float2 position = float2(lerp(BottomLeft.x, TopRight.x, id.x / (FullFieldSampleSize.x - 1.0)), lerp(BottomLeft.y, TopRight.y, id.y / (FullFieldSampleSize.y - 1.0)));
 
     float2 result = float2(0, 0);
     
-    int validAttractors = 0;
-
     for (int i = 0; i < PointCount; i++)
     {
         AttractorData data = PointAttractors[i];
@@ -74,27 +74,27 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
 
-        //float2 displacement = (otherPosition - position);
-        //float sqrDist = dot(displacement, displacement);
-        //float2 gravityDirection = normalize(displacement);
-        //float gravityMagnitude = (G * otherMass * 0.1);// / sqrt(sqrDist);
-
         result += (1 - doNotCount) * gravityMagnitude * gravityDirection;
 	}
     
     float2 globalOffset = (TopRight + BottomLeft) * 0.5; // centre 
-    float visualizerSize = (TopRight.x - BottomLeft.x);
-    float globalScalar = DEFAULT_BAKED_SIZE / visualizerSize;
+    float2 visualizerSize = float2(TopRight.x - BottomLeft.x, TopRight.y - BottomLeft.y);
+    float2 globalScalar = DEFAULT_BAKED_SIZE / visualizerSize;        
+    
+    float xScalar = DEFAULT_BAKED_SIZE / FullFieldSampleSize.x;
+    float yScalar = DEFAULT_BAKED_SIZE / FullFieldSampleSize.y;
 
     for (int j = 0; j < BakedCount; j++)
     {
         BakedAttractorData data = BakedAttractors[j];
-        float2 pivot = (globalOffset - data.position) * globalScalar;
 
-        result += CalculateGravity(BakedAttractorTextures, data, id.xy, globalScalar, pivot, position, 1);
+        float2 worldPos = globalOffset - data.position;
+        float2 scaledWorldPos = float2(worldPos.x * globalScalar.x, worldPos.y * globalScalar.y);
+
+        result += CalculateGravity(BakedAttractorTextures, data, float2(id.x * xScalar, id.y * yScalar), globalScalar, scaledWorldPos, position, 1);
 	}
 
-    GravityFieldOutputTexture[id.xy] = float4(result.x, result.y, 0, 1);
+    GravityFieldOutputTexture[id.xy] = float4(result, 0, 1);
 }
 		
 [numthreads(1, 1, 1)]
