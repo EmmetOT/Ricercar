@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
 using UnityEditor;
+using UnityEngine.UI;
 
 namespace Ricercar.Gravity
 {
     public class GravityMap : ScriptableObject
     {
-        public const int SIZE = 256;
+        public const int SIZE = 2048;
 
         [SerializeField]
         [ReadOnly]
@@ -50,25 +51,21 @@ namespace Ricercar.Gravity
 
         public static GravityMap Create(Texture sourceTexture, Texture2D texture, Vector2 centreOfGravity, string name)
         {
-            if (texture.width != SIZE || texture.height != SIZE)
-            {
-                Debug.LogError("GravityMap texture must be " + SIZE + "x" + SIZE);
-                return null;
-            }
+            Debug.Assert(texture.width == texture.height, "Gravity Maps must be created from square textures.");
 
-            Utils.SaveTexture(texture, "GravityMap_Texture_" + name);
-            GravityMap map = Utils.CreateAsset<GravityMap>("GravityMap_" + name);
+            // gravity maps are always square
+            int size = texture.width;
+
+            Utils.SaveTexture(texture, "GravityMap_Texture_" + name + "_" + size);
+            GravityMap map = Utils.CreateAsset<GravityMap>("GravityMap_" + name + "_" + size);
 
             map.m_guid = System.Guid.NewGuid().GetHashCode();
             map.m_sourceTexture = sourceTexture;
             map.m_texture = texture;
             map.m_centreOfGravity = centreOfGravity;
 
-            // for now, this is just done to remind me what "size" means - 
-            // gravity maps are created in a 256x256 space, and therefore need to be scaled to match the strength
-            // of gravity at other scales.
-            // if i want to make the size, 256, variable, i'd need to set it here.
-            map.m_size = SIZE;
+            // gravity maps are always square
+            map.m_size = size;
 
             Debug.Log("Saving texture with graphics format: " + map.m_texture.graphicsFormat);
 

@@ -1,6 +1,5 @@
 ﻿#define G 667.4
 #define DEGREES_TO_RADIANS 0.0174533
-#define DEFAULT_BAKED_SIZE 256
 #define EPSILON 0.00000001
 
 int when_eq(float x, float y) 

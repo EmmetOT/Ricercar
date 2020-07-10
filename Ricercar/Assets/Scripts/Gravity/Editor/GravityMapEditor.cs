@@ -70,13 +70,15 @@ namespace Ricercar.Gravity
                 GL.Begin(GL.LINES);
                 GL.Color(Color.white);
 
+                float mapSize = m_size.floatValue;
+
                 // vertical line
-                GL.Vertex(Vector2.Lerp(bottomLeft, bottomRight, centreOfGravity.x / GravityMap.SIZE));
-                GL.Vertex(Vector2.Lerp(topLeft, topRight, centreOfGravity.x / GravityMap.SIZE));
+                GL.Vertex(Vector2.Lerp(bottomLeft, bottomRight, centreOfGravity.x / mapSize));
+                GL.Vertex(Vector2.Lerp(topLeft, topRight, centreOfGravity.x / mapSize));
 
                 // horizontal line
-                GL.Vertex(Vector2.Lerp(topLeft, bottomLeft, 1f - (centreOfGravity.y / GravityMap.SIZE)));
-                GL.Vertex(Vector2.Lerp(topRight, bottomRight, 1f - (centreOfGravity.y / GravityMap.SIZE)));
+                GL.Vertex(Vector2.Lerp(topLeft, bottomLeft, 1f - (centreOfGravity.y / mapSize)));
+                GL.Vertex(Vector2.Lerp(topRight, bottomRight, 1f - (centreOfGravity.y / mapSize)));
 
                 GL.End();
                 GL.PopMatrix();

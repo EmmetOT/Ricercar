@@ -241,6 +241,9 @@ namespace Ricercar.Gravity
         {
             m_canvasRectTransform = m_canvas.transform as RectTransform;
             m_canvasRectTransform.sizeDelta = CanvasSize;
+
+            if (EditorApplication.isPlaying)
+                OnMoved();
         }
 
         private void ApplyAuraSize()

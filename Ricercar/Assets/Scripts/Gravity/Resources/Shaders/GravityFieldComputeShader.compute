@@ -79,14 +79,15 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     
     float2 globalOffset = (TopRight + BottomLeft) * 0.5; // centre 
     float2 visualizerSize = float2(TopRight.x - BottomLeft.x, TopRight.y - BottomLeft.y);
-    float2 globalScalar = DEFAULT_BAKED_SIZE / visualizerSize;        
-    
-    float xScalar = DEFAULT_BAKED_SIZE / FullFieldSampleSize.x;
-    float yScalar = DEFAULT_BAKED_SIZE / FullFieldSampleSize.y;
 
     for (int j = 0; j < BakedCount; j++)
     {
         BakedAttractorData data = BakedAttractors[j];
+
+        float2 globalScalar = data.size / visualizerSize;        
+    
+        float xScalar = data.size / FullFieldSampleSize.x;
+        float yScalar = data.size / FullFieldSampleSize.y;
 
         float2 worldPos = globalOffset - data.position;
         float2 scaledWorldPos = float2(worldPos.x * globalScalar.x, worldPos.y * globalScalar.y);

@@ -45,10 +45,12 @@ namespace Ricercar.Character
         [SerializeField]
         [ReadOnly]
         private Vector2 m_positiveAttractorGravityVector;
+        private Vector2 m_positiveAttractorGravityDirection;
 
         [SerializeField]
         [ReadOnly]
         private Vector2 m_negativeAttractorGravityVector;
+        private Vector2 m_negativeAttractorGravityDirection;
 
         private float m_normalizedPositiveMass;
 
@@ -97,6 +99,9 @@ namespace Ricercar.Character
             Debug.Log("Getting baked vectors...");
             m_positiveAttractorGravityVector = m_positiveAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
             m_negativeAttractorGravityVector = m_negativeAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
+
+            m_positiveAttractorGravityDirection = m_positiveAttractorGravityVector.normalized;
+            m_negativeAttractorGravityDirection = m_negativeAttractorGravityVector.normalized;
 
             // set the positive attractors mass such that it accelerates to the target speed in the target amount of time
             m_normalizedPositiveMass = 1f / m_positiveAttractorGravityVector.magnitude;
@@ -241,9 +246,12 @@ namespace Ricercar.Character
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.3f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.6f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
-            // draw current velocity as cyan
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)GravityWithoutWarpInfluence.normalized * 2f);
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_positiveAttractorGravityVector.normalized * 4f);
+
+            //// draw current velocity as cyan
+            //Gizmos.color = Color.cyan;
+            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)GravityWithoutWarpInfluence.normalized * 2f);
 
             //// draw desired velocity as magenta
             //Gizmos.color = Color.red;

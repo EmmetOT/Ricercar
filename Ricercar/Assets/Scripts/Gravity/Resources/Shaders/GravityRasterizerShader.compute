@@ -3,6 +3,7 @@
 #pragma kernel GenerateGravityMap
 #pragma kernel ClearOutputBuffer
 
+#define INPUT_SIZE 256
 #define MULTIPLICATION_FACTOR 10000.0
 
 Texture2D<float4> ImageInput;
@@ -15,6 +16,8 @@ StructuredBuffer<float2> OccupiedTexelsStructuredBuffer;
 StructuredBuffer<uint> OccupiedTexelsCount;
 uint InputWidth;
 uint InputHeight;
+
+uint Padding;
 
 [numthreads(3, 1, 1)]
 void ClearOutputBuffer(uint3 id : SV_DispatchThreadID)
@@ -45,9 +48,6 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
 
     float2 totalGravityForce = float2(0, 0);
 
-    uint inputXOffset = (DEFAULT_BAKED_SIZE - InputWidth) / 2;
-    uint inputYOffset = (DEFAULT_BAKED_SIZE - InputHeight) / 2;
-
     // OccupiedTexelsStructuredBuffer is a buffer which contains the coordinates of each
     // occupied (alpha nonzero) texel in the input texture. this is faster than iterating over every single
     // pixel, since most will be empty
@@ -55,7 +55,7 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
     {
         uint2 inputTexelPosition = OccupiedTexelsStructuredBuffer[i];
 
-        float2 texelPosition = float2(inputTexelPosition.x + inputXOffset, inputTexelPosition.y + inputYOffset);
+        float2 texelPosition = float2(inputTexelPosition.x + Padding, inputTexelPosition.y + Padding);
         uint x = (uint)texelPosition.x;
         uint y = (uint)texelPosition.y;
 
@@ -78,5 +78,5 @@ void GenerateGravityMap(uint3 id : SV_DispatchThreadID)
     InterlockedAdd(MassDistributionOutput[1], (int)(centreOfMassContribution.x * MULTIPLICATION_FACTOR));
     InterlockedAdd(MassDistributionOutput[2], (int)(centreOfMassContribution.y * MULTIPLICATION_FACTOR));
 
-    GravityMapOutput[position] = float4(totalGravityForce, 0, 1);
+    GravityMapOutput[position] = 10 * float4(totalGravityForce, 0, 1);
 }

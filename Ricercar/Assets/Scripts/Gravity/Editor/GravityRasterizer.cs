@@ -1,14 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using UnityEditor;
 using UnityEngine;
-using UnityEditor;
-using System;
 
 namespace Ricercar.Gravity
 {
     public class GravityRasterizer : EditorWindow
     {
-        private const int MAX_INPUT_SIZE = 256;
+        private const int INPUT_SIZE = 256;
 
         private const string COMPUTE_SHADER_PATH = "Shaders/GravityRasterizerShader";
 
@@ -23,6 +20,7 @@ namespace Ricercar.Gravity
         private const string GRAVITY_MAP_OUTPUT_TEXTURE = "GravityMapOutput";
         private const string INPUT_TEXTURE_WIDTH = "InputWidth";
         private const string INPUT_TEXTURE_HEIGHT = "InputHeight";
+        private const string PADDING = "Padding";
 
         private const string CLEAR_OUTPUT_BUFFER_KERNEL = "ClearOutputBuffer";
 
@@ -43,6 +41,8 @@ namespace Ricercar.Gravity
         private static ComputeBuffer m_occupiedTexelsCountBuffer;
 
         private static readonly int[] m_outputData = new int[3];
+
+        private int m_outputSize = 0;
 
         [MenuItem("Tools/Gravity Rasterizer")]
         public static void ShowWindow()
@@ -67,7 +67,7 @@ namespace Ricercar.Gravity
             m_computeShader.SetBuffer(m_generateGravityMapKernel, MASS_DISTRIBUTION_OUTPUT_BUFFER, m_outputBuffer);
             m_computeShader.SetBuffer(m_clearOutputBufferKernel, MASS_DISTRIBUTION_OUTPUT_BUFFER, m_outputBuffer);
 
-            m_occupiedTexelsAppendBuffer = new ComputeBuffer(MAX_INPUT_SIZE * MAX_INPUT_SIZE, sizeof(float) * 2, ComputeBufferType.Append);
+            m_occupiedTexelsAppendBuffer = new ComputeBuffer(INPUT_SIZE * INPUT_SIZE, sizeof(float) * 2, ComputeBufferType.Append);
 
             // setting the same buffer as an append buffer in one kernel
             // and a structured buffer in another
@@ -93,10 +93,15 @@ namespace Ricercar.Gravity
         public void OnGUI()
         {
             m_inputTexture = (Texture2D)EditorGUILayout.ObjectField("Input Texture", m_inputTexture, typeof(Texture2D), false);
-
+            
             GUI.enabled = m_inputTexture != null;
+
+            m_outputSize = Mathf.Max(m_inputTexture == null ? m_outputSize : m_inputTexture.width, EditorGUILayout.IntField("Output Size", m_outputSize));
+          
             if (GUILayout.Button("Generate Gravity Texture"))
             {
+                int padding = Mathf.FloorToInt((m_outputSize - m_inputTexture.width) / 2f);
+
                 if (m_computeShader == null)
                 {
                     m_computeShader = Resources.Load<ComputeShader>(COMPUTE_SHADER_PATH);
@@ -109,8 +114,10 @@ namespace Ricercar.Gravity
                     }
                 }
 
-                RenderTexture renderTexture = Utils.CreateTempRenderTexture(GravityMap.SIZE, GravityMap.SIZE, Color.black, GravityField.GRAPHICS_FORMAT);
-                GenerateGravityTexture(m_inputTexture, renderTexture, out m_centreOfGravity);
+                int size = m_inputTexture.width + padding * 2;
+
+                RenderTexture renderTexture = Utils.CreateTempRenderTexture(size, size, Color.black, GravityField.GRAPHICS_FORMAT);
+                GenerateGravityTexture(m_inputTexture, padding, renderTexture, out m_centreOfGravity);
 
                 m_outputFinal = renderTexture.ToTexture2D();
 
@@ -161,7 +168,7 @@ namespace Ricercar.Gravity
             }
         }
 
-        public static void GenerateGravityTexture(Texture2D input, RenderTexture output, out Vector2 centreOfGravity)
+        public static void GenerateGravityTexture(Texture2D input, int padding, RenderTexture output, out Vector2 centreOfGravity)
         {
             if (m_computeShader == null || m_occupiedTexelsAppendBuffer == null || m_occupiedTexelsCountBuffer == null)
             {
@@ -171,24 +178,25 @@ namespace Ricercar.Gravity
 
             System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            centreOfGravity = default;
+            //centreOfGravity = default;
 
-            if (input.width * input.height > MAX_INPUT_SIZE * MAX_INPUT_SIZE)
-            {
-                Debug.LogError("Input texture dimensions (" + input.width + ", " + input.height + ") exceeds maximum allowed texture size of " + MAX_INPUT_SIZE + "x" + MAX_INPUT_SIZE);
-                return;
-            }
+            //if (input.width * input.height > MAX_INPUT_SIZE * MAX_INPUT_SIZE)
+            //{
+            //    Debug.LogError("Input texture dimensions (" + input.width + ", " + input.height + ") exceeds maximum allowed texture size of " + MAX_INPUT_SIZE + "x" + MAX_INPUT_SIZE);
+            //    return;
+            //}
 
-            if (!IsPowerOfTwo(input.width) || !IsPowerOfTwo(input.height))
-            {
-                Debug.LogWarning("Input texture dimensions (" + input.width + ", " + input.height + ") are not powers of 2, output may look weird.");
-            }
+            //if (!IsPowerOfTwo(input.width) || !IsPowerOfTwo(input.height))
+            //{
+            //    Debug.LogWarning("Input texture dimensions (" + input.width + ", " + input.height + ") are not powers of 2, output may look weird.");
+            //}
 
             m_computeShader.SetTexture(m_massDistributionKernel, MASS_DISTRIBUTION_INPUT_TEXTURE, input);
             m_computeShader.SetTexture(m_generateGravityMapKernel, MASS_DISTRIBUTION_INPUT_TEXTURE, input);
             m_computeShader.SetTexture(m_generateGravityMapKernel, GRAVITY_MAP_OUTPUT_TEXTURE, output);
             m_computeShader.SetInt(INPUT_TEXTURE_WIDTH, input.width);
             m_computeShader.SetInt(INPUT_TEXTURE_HEIGHT, input.height);
+            m_computeShader.SetInt(PADDING, padding);
 
             // first we dispatch the kernel, which just empties the buffer 
             // equivalent to setting its data to 0, 0, 0, but faster than doing it on cpu side
@@ -203,7 +211,7 @@ namespace Ricercar.Gravity
 
             // finally, do a gravity calculation from each texel to every other texel with mass
             // (this is why sparser textures will get faster results)
-            m_computeShader.Dispatch(m_generateGravityMapKernel, GravityMap.SIZE / 32, GravityMap.SIZE / 32, 1);
+            m_computeShader.Dispatch(m_generateGravityMapKernel, output.width / 32, output.height / 32, 1);
 
             // get the data for the centre of gravity. can't be avoided unfortunately :(
             m_outputBuffer.GetData(m_outputData);
@@ -212,10 +220,10 @@ namespace Ricercar.Gravity
             Debug.Log("Took " + stopwatch.ElapsedMilliseconds + " milliseconds");
 
             // since atomic operations can only be on ints, we compute it as ints and then divide it by a large value
-            float xCentre = (m_outputData[1] / MULTIPLICATION_FACTOR / input.width) * GravityMap.SIZE;
-            float yCentre = (m_outputData[2] / MULTIPLICATION_FACTOR / input.height) * GravityMap.SIZE;
+            float xCentre = (m_outputData[1] / MULTIPLICATION_FACTOR / input.width) * input.width;
+            float yCentre = (m_outputData[2] / MULTIPLICATION_FACTOR / input.height) * input.height;
 
-            centreOfGravity = new Vector2(xCentre, yCentre);
+            centreOfGravity = new Vector2(xCentre + padding, yCentre + padding);
         }
 
         public static bool IsPowerOfTwo(int x)

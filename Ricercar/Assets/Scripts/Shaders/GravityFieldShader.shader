@@ -106,25 +106,20 @@
 			{
 				float4 gravityData = tex2D(_GravityFieldOutputTexture, i.uv);
 
-				float ddxIn = ddx(gravityData.x);
-				float ddyIn = ddy(gravityData.y);
-				float div = sign(ddxIn + ddyIn);
-				float sum = ddxIn + ddyIn;
-
-				//float4 something = div * float4(ddxIn, ddyIn, 0, 1);
-
-				float4 col = float4(1, 1, 1, 1);
-
-				float gravityAuraColourLerp = saturate(abs(sum * _GravityAuraSize));
-
-				if (sum > 0)
-					col = lerp(col, _PositiveGravityColour, gravityAuraColourLerp);
-				else 
-					col = lerp(col, _NegativeGravityColour, gravityAuraColourLerp);
-					
 				float2 gravity = float2(gravityData.x, gravityData.y) * _EffectScalar;
 
 			#ifdef IS_DISTORTION_MAP
+			
+				float ddxIn = ddx(gravityData.x);
+				float ddyIn = ddy(gravityData.y);
+				float sum = ddxIn + ddyIn;
+
+				float4 col = float4(1, 1, 1, 1);
+
+				float gravityAuraColourLerp = sum * _GravityAuraSize;
+
+				col = lerp(col, _PositiveGravityColour, saturate(gravityAuraColourLerp));
+				col = lerp(col, _NegativeGravityColour, saturate(-gravityAuraColourLerp));
 
 				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - gravity) / _GridScale;
 
