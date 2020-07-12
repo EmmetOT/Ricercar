@@ -10,6 +10,7 @@
 		[Toggle(IS_DISTORTION_MAP)] _IsDistortionMap("Is Distortion Map", float) = 0
 
 		_GravityAuraSize("Gravity Aura Size", float) = 1
+		_NeutralGravityColour("Neutral Gravity Colour", Color) = (0, 0, 0, 1)
 		_PositiveGravityColour("Positive Gravity Colour", Color) = (1, 1, 1, 1)
 		_NegativeGravityColour("Negative Gravity Colour", Color) = (1, 1, 1, 1)
 	}
@@ -52,6 +53,7 @@
 			uniform float _EffectScalar;	// how much to exaggerate the effect being shown
 			uniform float _GridScale; // a scale for the texture being sampled
 
+			float4 _NeutralGravityColour;
 			float4 _PositiveGravityColour;
 			float4 _NegativeGravityColour;
 
@@ -114,7 +116,7 @@
 				float ddyIn = ddy(gravityData.y);
 				float sum = ddxIn + ddyIn;
 
-				float4 col = float4(1, 1, 1, 1);
+				float4 col = _NeutralGravityColour;
 
 				float gravityAuraColourLerp = sum * _GravityAuraSize;
 

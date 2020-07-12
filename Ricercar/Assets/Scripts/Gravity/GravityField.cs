@@ -227,7 +227,10 @@ namespace Ricercar.Gravity
         {
             m_singleBakedAttractorData.Clear();
 
-            BakedAttractorData data = new BakedAttractorData(attractor);
+            BakedAttractorData data = new BakedAttractorData(attractor)
+            {
+                mass = 1f // we want normalized mass so we can multiply it by the true mass later
+            };
 
             // get the index for the gravity map used by this baked attractor
             if (m_bakedAttractorTextureGUIDToIndex.TryGetValue(attractor.GravityMap.GUID, out int index))
@@ -237,7 +240,7 @@ namespace Ricercar.Gravity
 
             m_singleBakedAttractorData.Add(data);
 
-            // set the data for the given baled attractor
+            // set the data for the given baked attractor
             m_bakedInputBuffer.SetData(m_singleBakedAttractorData);
             m_gravityFieldComputeShader.SetVector("SingleBakedAttractorForceCheckPoint", position);
 
@@ -245,7 +248,6 @@ namespace Ricercar.Gravity
             m_singleBakedAttractorForcesOutputBuffer.GetData(m_singleBakedAttractorForcesOutputData);
 
             Vector2 result = m_singleBakedAttractorForcesOutputData[0];
-            Debug.Log("Result = " + result);
             return result;
         }
 
@@ -315,6 +317,12 @@ namespace Ricercar.Gravity
 
                 if (!data.IsNaN())
                 {
+
+
+                    if (data.magnitude < 0.001f)
+                        data = Vector2.zero;
+
+
                     m_attractors[i].SetGravity(data/* * GravityDeltaTime*/);
                 }
             }
@@ -325,6 +333,9 @@ namespace Ricercar.Gravity
 
                 if (!data.IsNaN())
                 {
+                    if (data.magnitude < 0.001f)
+                        data = Vector2.zero;
+
                     m_bakedAttractors[i].SetGravity(data/* * GravityDeltaTime*/);
                 }
             }

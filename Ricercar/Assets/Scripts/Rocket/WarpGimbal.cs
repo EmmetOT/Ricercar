@@ -15,7 +15,7 @@ namespace Ricercar.Character
         private const float MIN_MASS_ABSOLUTE_VALUE = 0f;//0.001f;
 
         [SerializeField]
-        private SimpleRigidbodyAttractor m_attractor;
+        private Attractor m_attractor;
 
         [SerializeField]
         private Transform m_positiveWarpPivot;
@@ -66,8 +66,12 @@ namespace Ricercar.Character
         private static readonly int m_spriteTintProperty = Shader.PropertyToID("_Tint");
 
         private float m_currentNormalizedPositiveMass;
-
         private float m_currentNormalizedNegativeMass;
+
+        // these rotations ensure the warp attractors' centres of gravity
+        // are always aligned with the gimbals up rotation
+        private Quaternion m_positiveAttractorNormalizingRotation;
+        private Quaternion m_negativeAttractorNormalizingRotation;
 
 
         [BoxGroup("Visuals")]
@@ -96,7 +100,6 @@ namespace Ricercar.Character
 
         private void Start()
         {
-            Debug.Log("Getting baked vectors...");
             m_positiveAttractorGravityVector = m_positiveAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
             m_negativeAttractorGravityVector = m_negativeAttractor.GetAttractionFromPosition(m_rigidbody.position, 1f);
 
@@ -109,6 +112,12 @@ namespace Ricercar.Character
 
             m_maxPositiveMass = m_targetSpeed * m_normalizedPositiveMass / m_accelerationTime;
             m_maxNegativeMass = -m_targetSpeed * m_normalizedNegativeMass / m_accelerationTime;
+
+            m_positiveAttractorNormalizingRotation = Quaternion.FromToRotation(m_positiveAttractorGravityDirection, Vector2.up);
+            m_negativeAttractorNormalizingRotation = Quaternion.FromToRotation(m_negativeAttractorGravityDirection, Vector2.up);
+
+            Debug.Log("Negative dir = " + m_negativeAttractorGravityDirection);
+            Debug.Log("Normalized dir = " + (m_negativeAttractorNormalizingRotation * m_negativeAttractorGravityDirection));
 
             if (!m_rigidbody.velocity.IsZero())
             {
@@ -159,8 +168,8 @@ namespace Ricercar.Character
 
             Vector2 currentVelocity = m_rigidbody.velocity + m_gravityWithoutWarpInfluence;
 
-            m_positiveWarpPivot.up = desiredVelocity.normalized;
-            m_negativeWarpPivot.up = currentVelocity.normalized;
+            m_positiveWarpPivot.up = m_positiveAttractorNormalizingRotation * desiredVelocity.normalized;
+            m_negativeWarpPivot.up = m_negativeAttractorNormalizingRotation * currentVelocity.normalized;
 
             float positiveMass = desiredVelocity.magnitude * m_normalizedPositiveMass / m_accelerationTime;
             float negativeMass = -currentVelocity.magnitude * m_normalizedNegativeMass / m_accelerationTime;
@@ -246,12 +255,11 @@ namespace Ricercar.Character
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.3f, m_negativeAttractor.Mass.ToString(), 13, Color.red);
             Utils.Label((Vector2)m_transform.position + Vector2.up * 1.6f, m_positiveAttractor.Mass.ToString(), 13, Color.blue);
 
-            Gizmos.color = Color.magenta;
-            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_positiveAttractorGravityVector.normalized * 4f);
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)GravityWithoutWarpInfluence.normalized * 2f);
 
-            //// draw current velocity as cyan
-            //Gizmos.color = Color.cyan;
-            //Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)GravityWithoutWarpInfluence.normalized * 2f);
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(m_transform.position, m_transform.position + (Vector3)m_attractor.CurrentGravity.normalized * 2f);
 
             //// draw desired velocity as magenta
             //Gizmos.color = Color.red;

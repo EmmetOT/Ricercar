@@ -13,6 +13,7 @@ namespace Ricercar.Gravity
     {
         private const string EFFECT_SCALAR_PROPERTY = "_EffectScalar";
         private const string GRID_SCALE_PROPERTY = "_GridScale";
+        private const string NEUTRAL_GRAVITY_COLOUR_PROPERTY = "_NeutralGravityColour";
         private const string POSITIVE_GRAVITY_COLOUR_PROPERTY = "_PositiveGravityColour";
         private const string NEGATIVE_GRAVITY_COLOUR_PROPERTY = "_NegativeGravityColour";
         private const string GRAVITY_AURA_SIZE_PROPERTY = "_GravityAuraSize";
@@ -70,6 +71,11 @@ namespace Ricercar.Gravity
         [BoxGroup("Visual Settings")]
         [OnValueChanged("OnCanvasWidthChanged")]
         private float m_canvasWidth = 20f;
+
+        [SerializeField]
+        [BoxGroup("Visual Settings")]
+        [OnValueChanged("ApplyColourSettings")]
+        private Color m_neutralGravityColour;
 
         [SerializeField]
         [BoxGroup("Visual Settings")]
@@ -193,6 +199,12 @@ namespace Ricercar.Gravity
             m_gravityFieldComputeShader.Dispatch(m_computeFullFieldKernel, (int)m_sampleWidth / 16, (int)m_sampleHeight / 16, 1);
         }
 
+        private void LateUpdate()
+        {
+            // dont let this component rotate
+            m_transform.eulerAngles = Vector2.zero;
+        }
+
         public Vector2 GetTopRight()
         {
             return (Vector2)m_transform.position + CanvasSize * 0.5f;
@@ -213,6 +225,7 @@ namespace Ricercar.Gravity
             else
                 m_materialInstance.DisableKeyword(IS_DISTORTION_MAP_PROPERTY);
 
+            m_materialInstance.SetColor(NEUTRAL_GRAVITY_COLOUR_PROPERTY, m_neutralGravityColour);
             m_materialInstance.SetColor(POSITIVE_GRAVITY_COLOUR_PROPERTY, m_positiveGravityColour);
             m_materialInstance.SetColor(NEGATIVE_GRAVITY_COLOUR_PROPERTY, m_negativeGravityColour);
         }

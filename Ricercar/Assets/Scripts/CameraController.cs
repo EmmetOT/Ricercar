@@ -4,6 +4,7 @@ using UnityEngine;
 using NaughtyAttributes;
 using Ricercar.Gravity;
 using Ricercar.Character;
+using UnityEditor;
 
 namespace Ricercar
 {
@@ -33,10 +34,15 @@ namespace Ricercar
         [SerializeField]
         private Camera m_camera;
 
+        [SerializeField]
+        private float m_sensitivityFloor = 0.01f; // ignore vectors whose magnitude is below this value
+
         private Transform m_transform;
 
         [SerializeField]
         private bool m_rotateWithGravity = false;
+
+        private Vector2 m_targetRotation;
 
         [SerializeField]
         [MinValue(0f)]
@@ -60,12 +66,12 @@ namespace Ricercar
 
             if (m_rotateWithGravity)
             {
-                Vector2 gravityDirection = GravityDirection;
+                Vector2 gravityVector = GravityVector;
 
-                if (gravityDirection.IsZero())
-                    gravityDirection = Vector2.down;
+                //if (gravityVector.magnitude >= m_sensitivityFloor)
+                    m_targetRotation = gravityVector.normalized;
 
-                m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -gravityDirection), m_rotationSpeed * Time.deltaTime);
+                m_camera.transform.rotation = Quaternion.Slerp(m_camera.transform.rotation, Quaternion.LookRotation(Vector3.forward, -m_targetRotation), m_rotationSpeed * Time.deltaTime);
             }
         }
 
@@ -91,21 +97,29 @@ namespace Ricercar
             }
         }
 
-        private Vector2 GravityDirection
+        private Vector2 GravityVector
         {
             get
             {
                 switch (m_followMode)
                 {
                     case FollowMode.ATTRACTOR:
-                        return m_followAttractor == null ? Physics2D.gravity : m_followAttractor.CurrentGravity.normalized;
+                        return m_followAttractor == null ? Physics2D.gravity : m_followAttractor.CurrentGravity;
                     case FollowMode.WARP_GIMBAL:
-                        return m_warpGimbal == null ? Physics2D.gravity : m_warpGimbal.GravityWithoutWarpInfluence.normalized;
+                        return m_warpGimbal == null ? Physics2D.gravity : m_warpGimbal.GravityWithoutWarpInfluence;
                     default:
                         return Physics2D.gravity;
                 };
             }
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            if (EditorApplication.isPlaying)
+                Utils.DrawArrow(TargetPos, m_targetRotation, Color.white, 1f, 1f);
+        }
+#endif
     }
 
 }

@@ -17,7 +17,7 @@ namespace Ricercar.Gravity
 
 
         Vector2 GetAttractionFromPosition(Vector2 pos);
-        Vector2 GetAttractionFromPosition(Vector2 pos, float mass);
+        Vector2 GetAttractionFromPosition(Vector2 pos, float otherMass);
 
     }
 

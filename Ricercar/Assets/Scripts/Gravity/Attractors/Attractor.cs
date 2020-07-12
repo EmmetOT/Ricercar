@@ -58,7 +58,7 @@ namespace Ricercar.Gravity
         }
 
         public virtual void SetGravity(Vector2 gravity)
-        {            
+        {
             // for some unclear reason, gravity from the previous play session can
             // "leak in" during the first frame
             if (!m_canReceiveGravity)
