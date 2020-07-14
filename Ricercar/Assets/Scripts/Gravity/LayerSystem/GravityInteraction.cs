@@ -140,5 +140,12 @@ namespace Ricercar.Gravity
 
             Save();
         }
+
+        public static int[] GetGravityInteractionsArray()
+        {
+            int[] copy = new int[MAX_LAYERS];
+            m_gravityInteractions.CopyTo(copy, 0);
+            return copy;
+        }
     }
 }

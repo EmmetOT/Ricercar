@@ -41,6 +41,8 @@ namespace Ricercar.Gravity
         private ComputeBuffer m_pointInputBuffer;
         private ComputeBuffer m_bakedInputBuffer;
 
+        private ComputeBuffer m_layerBuffer;
+
         private int m_attractorCount = 0;
         private int m_bakedAttractorCount = 0;
 
@@ -88,6 +90,10 @@ namespace Ricercar.Gravity
             RefreshComputeBuffers();
 
             m_gravityUpdateTime = Time.time;
+
+            m_layerBuffer = new ComputeBuffer(32, sizeof(int));
+            m_layerBuffer.SetData(GravityInteraction.GetGravityInteractionsArray());
+            Shader.SetGlobalBuffer("LayerInteractions", m_layerBuffer);
         }
 
         private void OnDisable()

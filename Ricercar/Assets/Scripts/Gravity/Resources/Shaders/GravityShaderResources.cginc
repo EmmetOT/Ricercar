@@ -2,6 +2,16 @@
 #define DEGREES_TO_RADIANS 0.0174533
 #define EPSILON 0.00000001
 
+StructuredBuffer<int> LayerInteractions : register(t5);
+
+int GravityLayerInteraction(int layerA, int layerB)
+{
+    int layerAMask = 1 << layerA;
+    int layerBMask = LayerInteractions[layerB];
+
+    return saturate(layerAMask & layerBMask);
+}
+
 int when_eq(float x, float y) 
 {
     return 1 - abs(sign(x - y));

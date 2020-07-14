@@ -33,28 +33,31 @@ namespace Ricercar.Gravity
 
         private void OnGUI()
         {
-            m_showLayers = EditorGUILayout.Foldout(m_showLayers, "Gravity Layers");
-
-            if (m_showLayers)
+            using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
             {
-                m_layerScrollVec = EditorGUILayout.BeginScrollView(m_layerScrollVec, EditorStyles.helpBox);
-                using (new EditorGUI.IndentLevelScope())
+                m_showLayers = EditorGUILayout.Foldout(m_showLayers, "Gravity Layers");
+
+                if (m_showLayers)
                 {
-                    for (int i = 0; i < 32; i++)
+                    m_layerScrollVec = EditorGUILayout.BeginScrollView(m_layerScrollVec, EditorStyles.helpBox);
+                    using (new EditorGUI.IndentLevelScope())
                     {
-                        EditorGUI.BeginChangeCheck();
-                        string newVal = EditorGUILayout.TextField(new GUIContent("Gravity Layer " + (i + 1)), GravityInteraction.LayerToName(i));
-                        if (EditorGUI.EndChangeCheck())
+                        for (int i = 0; i < 32; i++)
                         {
-                            GravityInteraction.SetLayerName(i, newVal);
+                            EditorGUI.BeginChangeCheck();
+                            string newVal = EditorGUILayout.TextField(new GUIContent("Gravity Layer " + (i + 1)), GravityInteraction.LayerToName(i));
+                            if (EditorGUI.EndChangeCheck())
+                            {
+                                GravityInteraction.SetLayerName(i, newVal);
+                            }
                         }
                     }
+                    EditorGUILayout.EndScrollView();
+
                 }
-                EditorGUILayout.EndScrollView();
 
+                GravityLayerMatrixGUI.DoGUI("Layer Interaction Matrix", ref m_showMatrix, ref m_matrixScrollVec, GetGravityInteractionValue, SetGravityInteractionValue);
             }
-
-            GravityLayerMatrixGUI.DoGUI("Layer Interaction Matrix", ref m_showMatrix, ref m_matrixScrollVec, GetGravityInteractionValue, SetGravityInteractionValue);
         }
     }
 }

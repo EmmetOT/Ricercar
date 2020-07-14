@@ -113,6 +113,8 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
     {
         AttractorData data = PointAttractors[i];
 
+        int interaction = GravityLayerInteraction(currentPoint.layer, data.layer);
+
         // we dont want to add the gravity 
         // for the attractor to itself. this value returns 1 if the indices are equal,
         // else 0
@@ -146,17 +148,19 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
         
-        result += (1 - doNotCount) * gravityMagnitude * gravityDirection;
+        result += interaction * ((1 - doNotCount) * gravityMagnitude * gravityDirection);
     }
     
     for (int j = 0; j < BakedCount; j++)
     {
         BakedAttractorData data = BakedAttractors[j];
 
+        int interaction = GravityLayerInteraction(currentPoint.layer, data.layer);
+
         float2 origin = float2(data.size, data.size) * 0.5;
 
         // float3 CalculateGravity(Texture2DArray<float4> textures, BakedAttractorData data, float2 uvPosition, float globalScalar, float2 pivot, float2 pointPosition, float pointMass)
-        result += CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, mass);
+        result += interaction * CalculateGravity(BakedAttractorTextures, data, position + origin, 1, -data.position, position, mass);
 	}
 
     PointForces[id.x] = result;
