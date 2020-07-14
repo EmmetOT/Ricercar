@@ -20,6 +20,7 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         protected GravityField m_gravityField;
+        public GravityField GravityField => m_gravityField;
 
         [SerializeField]
         private bool m_applyForceToSelf = true;
