@@ -54,6 +54,12 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         [BoxGroup("Visual Settings")]
+        [GravityLayer]
+        [OnValueChanged("SetVisualizationLayer")]
+        private int m_visualizationLayer;
+
+        [SerializeField]
+        [BoxGroup("Visual Settings")]
         private Texture m_background;
 
         [SerializeField]
@@ -153,6 +159,7 @@ namespace Ricercar.Gravity
             m_materialInstance.SetFloat(EFFECT_SCALAR_PROPERTY, m_effectScalar);
             m_materialInstance.SetTexture("_GravityFieldOutputTexture", m_renderTexture);
 
+            SetVisualizationLayer();
             ApplyColourSettings();
             ApplyAuraSize();
 
@@ -262,6 +269,11 @@ namespace Ricercar.Gravity
         private void ApplyAuraSize()
         {
             m_materialInstance.SetFloat(GRAVITY_AURA_SIZE_PROPERTY, m_auraSize);
+        }
+
+        private void SetVisualizationLayer()
+        {
+            m_gravityFieldComputeShader.SetInt("VisualLayer", m_visualizationLayer);
         }
     }
 

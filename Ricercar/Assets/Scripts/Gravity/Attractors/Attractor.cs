@@ -27,7 +27,7 @@ namespace Ricercar.Gravity
 
         [SerializeField]
         private bool m_affectsField = true;
-        public bool AffectsField => m_affectsField && !Mathf.Approximately(Mass, 0f);
+        public bool AffectsField => m_affectsField && Mass != 0f;
 
         public abstract float Mass { get; }
 

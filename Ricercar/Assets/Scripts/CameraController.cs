@@ -13,6 +13,13 @@ namespace Ricercar
         private enum FollowMode { TRANSFORM, ATTRACTOR, WARP_GIMBAL }
 
         [SerializeField]
+        private GravityField m_gravityField;
+
+        [SerializeField]
+        [GravityLayer]
+        private int m_cameraLayer;
+
+        [SerializeField]
         private FollowMode m_followMode = FollowMode.TRANSFORM;
 
         [SerializeField]
@@ -49,9 +56,16 @@ namespace Ricercar
         [ShowIf("m_rotateWithGravity")]
         private float m_rotationSpeed = 1f;
 
+        private GravityQueryObject m_gravityQuery;
+
         private void Awake()
         {
             m_transform = transform;
+        }
+
+        private void Start()
+        {
+            m_gravityQuery = new GravityQueryObject(m_gravityField, m_cameraLayer, m_transform);
         }
 
         private void LateUpdate()
@@ -114,10 +128,10 @@ namespace Ricercar
         }
 
 #if UNITY_EDITOR
-        private void OnDrawGizmosSelected()
+        private void OnDrawGizmos()
         {
             if (EditorApplication.isPlaying)
-                Utils.DrawArrow(TargetPos, m_targetRotation, Color.white, 1f, 1f);
+                Utils.DrawArrow(TargetPos, m_gravityQuery.CurrentGravity/*m_targetRotation*/, Color.white, 1f, 1f);
         }
 #endif
     }

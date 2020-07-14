@@ -8,7 +8,7 @@ namespace Ricercar.Gravity
     {
         int Layer { get; }
         Vector2 Position { get; }
-        Vector2 Velocity { get; }
+        //Vector2 Velocity { get; }
         Vector2 CurrentGravity { get; }
         float Mass { get; }
         bool AffectsField { get; }

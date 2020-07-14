@@ -33,6 +33,8 @@ float2 SingleBakedAttractorForceCheckPoint;
 // the size of the sample grid
 float2 FullFieldSampleSize;
 
+int VisualLayer;
+
 [numthreads(1, 1, 1)]
 void ComputeSingleBakedAttractorForce(uint3 id : SV_DispatchThreadID)
 {
@@ -56,11 +58,13 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     for (int i = 0; i < PointCount; i++)
     {
         AttractorData data = PointAttractors[i];
+
+        int interaction = GravityLayerInteraction(VisualLayer, data.layer);
         int doNotCount = data.ignore;
 
         float2 otherPosition = float2(data.position.x + doNotCount, data.position.y + doNotCount);
 
-        float otherMass = data.mass;
+        float otherMass = doNotCount + data.mass;
         
         float distance = length(otherPosition - position);
 
@@ -74,7 +78,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
 
         gravityMagnitude = lerp(gravityMagnitude, shellGravity, insideShell);
 
-        result += (1 - doNotCount) * gravityMagnitude * gravityDirection;
+        result += interaction * ((1 - doNotCount) * gravityMagnitude * gravityDirection);
 	}
     
     float2 globalOffset = (TopRight + BottomLeft) * 0.5; // centre 
@@ -83,6 +87,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
     for (int j = 0; j < BakedCount; j++)
     {
         BakedAttractorData data = BakedAttractors[j];
+        int interaction = GravityLayerInteraction(VisualLayer, data.layer);
 
         float2 globalScalar = data.size / visualizerSize;        
     
@@ -92,7 +97,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         float2 worldPos = globalOffset - data.position;
         float2 scaledWorldPos = float2(worldPos.x * globalScalar.x, worldPos.y * globalScalar.y);
 
-        result += CalculateGravity(BakedAttractorTextures, data, float2(id.x * xScalar, id.y * yScalar), globalScalar, scaledWorldPos, position, 1);
+        result += interaction * CalculateGravity(BakedAttractorTextures, data, float2(id.x * xScalar, id.y * yScalar), globalScalar, scaledWorldPos, position, 1);
 	}
 
     GravityFieldOutputTexture[id.xy] = float4(result, 0, 1);
