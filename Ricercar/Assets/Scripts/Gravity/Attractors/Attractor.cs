@@ -10,6 +10,10 @@ namespace Ricercar.Gravity
     {
         private bool m_canReceiveGravity = false;
 
+        [GravityLayer]
+        public int m_layer;
+        public int Layer => m_layer;
+
         [SerializeField]
         [HideInInspector]
         protected Transform m_transform;

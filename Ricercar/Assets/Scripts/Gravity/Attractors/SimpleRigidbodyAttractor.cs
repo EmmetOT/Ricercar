@@ -11,9 +11,6 @@ namespace Ricercar.Gravity
 {
     public class SimpleRigidbodyAttractor : Attractor, ISimpleAttractor
     {
-        [GravityLayer]
-        public int derp;
-
         [SerializeField]
         private bool m_useRigidbodyPosition = false;
 

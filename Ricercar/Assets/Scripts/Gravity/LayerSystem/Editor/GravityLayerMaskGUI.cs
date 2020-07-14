@@ -92,6 +92,8 @@ namespace Ricercar.Gravity
                         y++;
                     }
                 }
+
+                GUILayout.Space(40);
             }
         }
     }

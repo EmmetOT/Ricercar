@@ -54,18 +54,12 @@ int not(int a)
 
 struct AttractorData
 {
-    float x;
-    float y;
+    float2 position;
     int ignore;
     float mass;
     float radius;
     float surfaceGravityForce;
-
-    int isLine;
-    float lineStartX;
-    float lineStartY;
-    float lineEndX;
-    float lineEndY;
+    int layer;
 };
 
 struct BakedAttractorData
@@ -78,6 +72,7 @@ struct BakedAttractorData
     float size;
     float scale;
     int textureIndex;
+    int layer;
 };
 
 float2x2 GetRotationMatrix(float rotation)

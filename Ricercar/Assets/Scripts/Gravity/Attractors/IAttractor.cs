@@ -6,6 +6,7 @@ namespace Ricercar.Gravity
 {
     public interface IAttractor
     {
+        int Layer { get; }
         Vector2 Position { get; }
         Vector2 Velocity { get; }
         Vector2 CurrentGravity { get; }

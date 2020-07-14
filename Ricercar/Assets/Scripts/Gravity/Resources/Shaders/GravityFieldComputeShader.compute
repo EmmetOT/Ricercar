@@ -58,7 +58,7 @@ void ComputeFullField(uint3 id : SV_DispatchThreadID)
         AttractorData data = PointAttractors[i];
         int doNotCount = data.ignore;
 
-        float2 otherPosition = float2(data.x + doNotCount, data.y + doNotCount);
+        float2 otherPosition = float2(data.position.x + doNotCount, data.position.y + doNotCount);
 
         float otherMass = data.mass;
         
@@ -106,7 +106,7 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
     // this kernel computes the attraction from this point to every other point
 
     AttractorData currentPoint = PointAttractors[id.x];
-    float2 position = float2(currentPoint.x, currentPoint.y);
+    float2 position = currentPoint.position;
     float mass = currentPoint.mass;
 
     for (int i = 0; i < PointCount; i++)
@@ -121,7 +121,7 @@ void ComputeForces(uint3 id : SV_DispatchThreadID)
 
         // adding the value here to prevent a division by 0. it doesn't matter, this calculation
         // will be discarded anyway
-        float2 otherPosition = float2(data.x + doNotCount, data.y + doNotCount);
+        float2 otherPosition = float2(data.position.x + doNotCount, data.position.y + doNotCount);
 
         // calculate for lines
         //float2 lineStartPos = float2(otherPoint.lineStartX + doNotCount, otherPoint.lineStartY + doNotCount);
