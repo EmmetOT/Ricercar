@@ -44,7 +44,7 @@ namespace Ricercar.Gravity
 
         private int m_outputSize = 0;
 
-        [MenuItem("Tools/Gravity Rasterizer")]
+        [MenuItem("Gravity/Rasterizer")]
         public static void ShowWindow()
         {
             ReleaseBuffers();
