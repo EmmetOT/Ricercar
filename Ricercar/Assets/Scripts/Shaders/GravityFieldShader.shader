@@ -13,6 +13,13 @@
 		_NeutralGravityColour("Neutral Gravity Colour", Color) = (0, 0, 0, 1)
 		_PositiveGravityColour("Positive Gravity Colour", Color) = (1, 1, 1, 1)
 		_NegativeGravityColour("Negative Gravity Colour", Color) = (1, 1, 1, 1)
+
+		_CameraRotationDegrees("Camera Rotation (Degrees)", float) = 0
+		
+		_RemapFromMinMagnitude("Remap From Min Magnitude", float) = 0
+		_RemapFromMaxMagnitude("Remap From Max Magnitude", float) = 0
+		_RemapToMinMagnitude("Remap To Min Magnitude", float) = 0
+		_RemapToMaxMagnitude("Remap To Max Magnitude", float) = 0
 	}
 
 	SubShader
@@ -56,8 +63,24 @@
 			float4 _NeutralGravityColour;
 			float4 _PositiveGravityColour;
 			float4 _NegativeGravityColour;
-
+			
 			float _GravityAuraSize;
+			float _CameraRotationDegrees;
+
+			float _RemapFromMinMagnitude;
+			float _RemapFromMaxMagnitude;
+			float _RemapToMinMagnitude;
+			float _RemapToMaxMagnitude;
+
+			float invLerp(float from, float to, float value)
+			{
+				return (value - from) / (to - from);
+			}
+
+			float remap(float fromMin, float fromMax, float toMin, float toMax, float t)
+			{
+				lerp(toMin, toMax, invLerp(fromMin, fromMax, t));
+			}
 
 			float fwidthSmooth(float value)
 			{
@@ -75,6 +98,16 @@
 			float2 fwidthSmooth(float2 value)
 			{
 				return float2(fwidthSmooth(value.x), fwidthSmooth(value.y));
+			}
+
+			float2 Rotate(float2 vec, float rotation)
+			{
+				rotation *= 0.01745329251;
+				float cosRot = cos(rotation);
+				float sinRot = sin(rotation);
+				float2x2 rotationMatrix = { cosRot, -sinRot, sinRot, cosRot };
+
+				return mul(rotationMatrix, vec);
 			}
 
 			struct appdata_t
@@ -112,8 +145,12 @@
 
 			#ifdef IS_DISTORTION_MAP
 			
-				float ddxIn = ddx(gravityData.x);
-				float ddyIn = ddy(gravityData.y);
+				// need to undo the rotation of the camera here (because ddx/ddy produce results in screen space,
+				// but we want the results of this bit to be rotation invariant)
+				float2 rotated = Rotate(gravityData.xy, _CameraRotationDegrees);
+				float ddxIn = ddx(rotated.x);
+				float ddyIn = ddy(rotated.y);
+
 				float sum = ddxIn + ddyIn;
 
 				float4 col = _NeutralGravityColour;
@@ -123,14 +160,20 @@
 				col = lerp(col, _PositiveGravityColour, saturate(gravityAuraColourLerp));
 				col = lerp(col, _NegativeGravityColour, saturate(-gravityAuraColourLerp));
 
-				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - gravity) / _GridScale;
+				float gravLength = lerp(_RemapToMinMagnitude, _RemapToMaxMagnitude, smoothstep(_RemapFromMinMagnitude, _RemapFromMaxMagnitude, length(gravity)));
+				float2 distortionGrav = normalize(gravity) * gravLength;
+
+				float2 distortedUVs = (float2(i.worldPos.x, i.worldPos.y) - distortionGrav) / _GridScale;
 
 				float4 sampleCol = tex2D(_MainTex, distortedUVs);
 
 				return col * sampleCol * i.color;
 
 			#else
-				return float4(gravity, 0, 1) * i.color;
+				// make negative gravity visible
+				gravity = smoothstep(-1, 1, gravity);
+
+				return float4(gravity, 0, 1);
 			#endif
 			}
 

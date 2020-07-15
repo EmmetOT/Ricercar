@@ -17,6 +17,7 @@ namespace Ricercar.Gravity
         private const string POSITIVE_GRAVITY_COLOUR_PROPERTY = "_PositiveGravityColour";
         private const string NEGATIVE_GRAVITY_COLOUR_PROPERTY = "_NegativeGravityColour";
         private const string GRAVITY_AURA_SIZE_PROPERTY = "_GravityAuraSize";
+        private const string ROTATION_PROPERTY = "_CameraRotationDegrees";
 
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
@@ -209,7 +210,10 @@ namespace Ricercar.Gravity
         private void LateUpdate()
         {
             // dont let this component rotate
-            m_transform.eulerAngles = Vector2.zero;
+            //m_transform.eulerAngles = Vector2.zero;
+
+
+            m_materialInstance.SetFloat(ROTATION_PROPERTY, m_transform.eulerAngles.z);
         }
 
         public Vector2 GetTopRight()
