@@ -13,9 +13,6 @@ namespace Ricercar.Character
     public class WarpGimbal : Gimbal
     {
         [SerializeField]
-        private RocketController m_controller;
-
-        [SerializeField]
         private Rigidbody2D m_rigidbody;
 
         [SerializeField]

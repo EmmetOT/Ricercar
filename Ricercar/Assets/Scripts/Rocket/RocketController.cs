@@ -13,9 +13,6 @@ namespace Ricercar.Character
     public class RocketController : MonoBehaviour
     {
         [SerializeField]
-        private WarpGimbal m_warpGimbal;
-
-        [SerializeField]
         [GravityLayer]
         private int m_defaultLayer;
 
@@ -55,6 +52,11 @@ namespace Ricercar.Character
         {
             m_transform = transform;
             m_gravityQuery = new GravityQueryObject(Attractor.GravityField, m_defaultLayer, m_transform);
+
+            for (int i = 0; i < m_gimbals.Length; i++)
+            {
+                m_gimbals[i].Init(this);
+            }
         }
 
         private void OnEnable()

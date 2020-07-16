@@ -11,13 +11,9 @@ namespace Ricercar.Character
         [SerializeField]
         private InverseKinematicLegSystem m_legSystem;
 
-        protected override void OnGravityChanged()
+        private void LateUpdate()
         {
-            transform.up = -m_currentGravity.normalized;
-        }
-
-        private void FixedUpdate()
-        {
+            m_transform.up = -m_controller.CurrentGravityWithoutWarp.normalized;
             m_legSystem.TryLand();
         }
     }

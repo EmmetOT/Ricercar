@@ -8,6 +8,8 @@ namespace Ricercar.Character
 {
     public abstract class Gimbal : MonoBehaviour
     {
+        protected RocketController m_controller;
+
         protected Vector2 m_currentAim;
 
         [SerializeField]
@@ -25,17 +27,10 @@ namespace Ricercar.Character
             m_transform = transform;
         }
 
-        public void SetGravity(Vector2 gravity)
+        public void Init(RocketController controller)
         {
-            if (m_currentGravity == gravity)
-                return;
-
-            m_currentGravity = gravity;
-
-            OnGravityChanged();
+            m_controller = controller;
         }
-
-        protected virtual void OnGravityChanged() { }
 
         public void SetAim(Vector2 aim)
         {
