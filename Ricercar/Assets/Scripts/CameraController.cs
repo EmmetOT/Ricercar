@@ -75,6 +75,9 @@ namespace Ricercar
             //    (IsFollowingWarpGimbal() && m_warpGimbal == null))
             //    return;
 
+            if (m_gravityQuery == null)
+                return;
+
             Vector3 pos = m_gravityQuery.Position;
             m_transform.position = Vector3.Lerp(m_transform.position, pos, m_followSpeed * Time.deltaTime);
 

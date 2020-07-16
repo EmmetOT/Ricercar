@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 203887417}
-  - component: {fileID: 203887418}
+  - component: {fileID: 641594706}
   m_Layer: 0
   m_Name: PositiveWarp (1)
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Father: {fileID: 3159023071781667792}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &203887418
+--- !u!114 &641594706
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,20 +41,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 203887416}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ca09e4c5a469b04facc158d90ab74e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 220e18bee5ac6044ab21cd109f53ad10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_layer: 2
   m_transform: {fileID: 203887417}
   m_gravityField: {fileID: 0}
   m_applyForceToSelf: 0
   m_affectsField: 1
   m_currentGravity: {x: 0, y: 0}
-  m_gravityMap: {fileID: 11400000, guid: f59bc6d7690f40f4087fdc33baea4a04, type: 2}
-  m_scale: 0.03
-  m_rigidbody: {fileID: 0}
-  m_useRigidbodyMass: 0
-  m_mass: 1
-  m_extrapolationSource: 1
+  m_mass: 0.03
+  m_drawGizmos: 0
+  m_isShell: 0
+  m_radius: 0
+  m_surfaceGravityForce: Infinity
 --- !u!1 &710354452
 GameObject:
   m_ObjectHideFlags: 0
@@ -64,7 +64,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 710354453}
-  - component: {fileID: 710354454}
+  - component: {fileID: 1703528062}
   m_Layer: 0
   m_Name: NegativeWarp (1)
   m_TagString: Untagged
@@ -87,7 +87,7 @@ Transform:
   m_Father: {fileID: 3159023072118763978}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &710354454
+--- !u!114 &1703528062
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -96,20 +96,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 710354452}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ca09e4c5a469b04facc158d90ab74e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 220e18bee5ac6044ab21cd109f53ad10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_layer: 2
   m_transform: {fileID: 710354453}
   m_gravityField: {fileID: 0}
   m_applyForceToSelf: 0
   m_affectsField: 1
   m_currentGravity: {x: 0, y: 0}
-  m_gravityMap: {fileID: 11400000, guid: f59bc6d7690f40f4087fdc33baea4a04, type: 2}
-  m_scale: 0.03
-  m_rigidbody: {fileID: 0}
-  m_useRigidbodyMass: 0
-  m_mass: 1
-  m_extrapolationSource: 1
+  m_mass: 0.03
+  m_drawGizmos: 0
+  m_isShell: 0
+  m_radius: 0
+  m_surfaceGravityForce: Infinity
 --- !u!1 &1027780758
 GameObject:
   m_ObjectHideFlags: 0
@@ -126,7 +126,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1027780759
 Transform:
   m_ObjectHideFlags: 0
@@ -136,7 +136,7 @@ Transform:
   m_GameObject: {fileID: 1027780758}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 128, y: 128, z: 1}
+  m_LocalScale: {x: 32, y: 32, z: 1}
   m_Children: []
   m_Father: {fileID: 710354453}
   m_RootOrder: 0
@@ -180,7 +180,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 9397278f794ccd844b766a7fe8175d31, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a5432ce5043719847b0ec1445e3e9b87, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 0.48235294}
   m_FlipX: 0
   m_FlipY: 0
@@ -207,7 +207,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1329625042
 Transform:
   m_ObjectHideFlags: 0
@@ -217,7 +217,7 @@ Transform:
   m_GameObject: {fileID: 1329625041}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 128, y: 128, z: 1}
+  m_LocalScale: {x: 32, y: 32, z: 1}
   m_Children: []
   m_Father: {fileID: 203887417}
   m_RootOrder: 0
@@ -261,7 +261,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 9397278f794ccd844b766a7fe8175d31, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a5432ce5043719847b0ec1445e3e9b87, type: 3}
   m_Color: {r: 0, g: 0, b: 1, a: 0.48235294}
   m_FlipX: 0
   m_FlipY: 0
@@ -468,6 +468,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_warpGimbal: {fileID: 3159023073271061837}
+  m_defaultLayer: 3
   m_canEnter: 0
   m_hasPilot: 1
   m_characterController: {fileID: 0}
@@ -532,9 +533,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8ae53b8f0544854eab0efbc2c44a596, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_layer: 1
   m_transform: {fileID: 3159023072570266726}
   m_gravityField: {fileID: 0}
-  m_applyForceToSelf: 0
+  m_applyForceToSelf: 1
   m_affectsField: 0
   m_currentGravity: {x: 0, y: 0}
   m_useRigidbodyPosition: 0
@@ -592,22 +594,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_desiredMovement: {x: 0, y: 0}
   m_isActive: 1
-  m_attractor: {fileID: 3159023072570266727}
-  m_positiveWarpPivot: {fileID: 3159023071781667792}
-  m_negativeWarpPivot: {fileID: 3159023072118763978}
-  m_positiveAttractor: {fileID: 203887418}
-  m_negativeAttractor: {fileID: 710354454}
+  m_controller: {fileID: 3159023072570266724}
   m_rigidbody: {fileID: 3159023072570266723}
   m_targetSpeed: 20
-  m_accelerationTime: 0.2
-  m_positiveAttractorGravityVector: {x: 0, y: 0}
-  m_negativeAttractorGravityVector: {x: 0, y: 0}
-  m_positiveSprite: {fileID: 1329625043}
-  m_negativeSprite: {fileID: 1027780760}
-  m_minPositiveSpriteColour: {r: 0, g: 0, b: 0.43529412, a: 0.43529412}
-  m_maxPositiveSpriteColour: {r: 0, g: 0, b: 1, a: 1}
-  m_minNegativeSpriteColour: {r: 0.4339623, g: 0, b: 0, a: 0.43529412}
-  m_maxNegativeSpriteColour: {r: 1, g: 0, b: 0, a: 1}
+  m_antigravity: 1
+  m_accelerationTime: 0.1
+  m_positiveWarp:
+    Attractor: {fileID: 641594706}
+    Pivot: {fileID: 3159023071781667792}
+    SpriteRenderer: {fileID: 1329625043}
+    MinColour: {r: 0, g: 0, b: 0.43529412, a: 0.43529412}
+    MaxColour: {r: 0, g: 0, b: 1, a: 1}
+  m_negativeWarp:
+    Attractor: {fileID: 1703528062}
+    Pivot: {fileID: 3159023072118763978}
+    SpriteRenderer: {fileID: 1027780760}
+    MinColour: {r: 0.4339623, g: 0, b: 0, a: 0.43529412}
+    MaxColour: {r: 1, g: 0, b: 0, a: 1}
 --- !u!1 &4386476645500677356
 GameObject:
   m_ObjectHideFlags: 0

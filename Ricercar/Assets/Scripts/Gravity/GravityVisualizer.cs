@@ -31,6 +31,10 @@ namespace Ricercar.Gravity
         [BoxGroup("Components")]
         private GravityField m_gravityField;
 
+        [SerializeField]
+        [BoxGroup("Components")]
+        private Transform m_followTransform;
+
         private Transform m_transform;
 
         [SerializeField]
@@ -53,10 +57,19 @@ namespace Ricercar.Gravity
         private Material m_material;
         private Material m_materialInstance;
 
+        private GravityQueryObject m_gravityQuery;
+
+        [SerializeField]
+        [GravityLayer]
+        private int m_cameraLayer;
+
+        [SerializeField]
+        [BoxGroup("Visual Settings")]
+        private bool m_setRotation = true;
+
         [SerializeField]
         [BoxGroup("Visual Settings")]
         [GravityLayer]
-        [OnValueChanged("SetVisualizationLayer")]
         private int m_visualizationLayer;
 
         [SerializeField]
@@ -174,6 +187,8 @@ namespace Ricercar.Gravity
             m_rawImage.material = m_materialInstance;
 
             m_transform.hasChanged = false;
+
+            m_gravityQuery = new GravityQueryObject(m_gravityField, m_cameraLayer, m_followTransform);
         }
 
         private void OnEnable()
@@ -209,11 +224,15 @@ namespace Ricercar.Gravity
 
         private void LateUpdate()
         {
-            // dont let this component rotate
-            //m_transform.eulerAngles = Vector2.zero;
+            if (!m_setRotation)
+                return;
 
+            // passing a rotation value into the shader so we can measure the screen space gradient of the gravity texture
+            // without having to worry about rotation affecting it
+            Vector2 gravityVector = m_gravityQuery.CurrentGravity.normalized;
+            float gravityAngle = -Mathf.Atan2(gravityVector.y, gravityVector.x) * Mathf.Rad2Deg - 90f;
 
-            m_materialInstance.SetFloat(ROTATION_PROPERTY, m_transform.eulerAngles.z);
+            m_materialInstance.SetFloat(ROTATION_PROPERTY, gravityAngle);
         }
 
         public Vector2 GetTopRight()

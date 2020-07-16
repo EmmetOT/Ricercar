@@ -16,6 +16,14 @@ namespace Ricercar.Character
         private WarpGimbal m_warpGimbal;
 
         [SerializeField]
+        [GravityLayer]
+        private int m_defaultLayer;
+
+        private GravityQueryObject m_gravityQuery;
+
+        public Vector2 CurrentGravityWithoutWarp => m_gravityQuery.CurrentGravity;
+
+        [SerializeField]
         [ReadOnly]
         private bool m_canEnter = false;
 
@@ -32,6 +40,7 @@ namespace Ricercar.Character
         [SerializeField]
         [BoxGroup("Components")]
         private SimpleRigidbodyAttractor m_attractor;
+        public Attractor Attractor => m_attractor;
 
         [SerializeField]
         private Gimbal[] m_gimbals;
@@ -41,6 +50,12 @@ namespace Ricercar.Character
 
         private Vector2 m_currentAim;
         private Vector2 m_currentMovement;
+
+        private void Start()
+        {
+            m_transform = transform;
+            m_gravityQuery = new GravityQueryObject(Attractor.GravityField, m_defaultLayer, m_transform);
+        }
 
         private void OnEnable()
         {
@@ -55,6 +70,12 @@ namespace Ricercar.Character
         {
             m_input.OnSpaceDown -= OnSpaceDown;
             m_input.OnSpaceUp -= OnSpaceUp;
+        }
+
+        private void OnDrawGizmos()
+        {
+            if (EditorApplication.isPlaying)
+                Utils.DrawArrow(m_transform.position, CurrentGravityWithoutWarp, Color.cyan, 0.2f, 0.4f);
         }
 
         public void SetHasPilot(bool hasPilot)
@@ -98,8 +119,8 @@ namespace Ricercar.Character
         {
             m_input.ManualFixedUpdate();
 
-            for (int i = 0; i < m_gimbals.Length; i++)
-                m_gimbals[i].SetGravity(m_warpGimbal.GravityWithoutWarpInfluence);
+            //for (int i = 0; i < m_gimbals.Length; i++)
+            //    m_gimbals[i].SetGravity(m_warpGimbal.GravityWithoutWarpInfluence);
         }
 
         private void OnSpaceDown()
