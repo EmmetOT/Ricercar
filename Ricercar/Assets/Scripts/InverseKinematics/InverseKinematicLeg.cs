@@ -23,7 +23,25 @@ namespace Ricercar.InverseKinematics
         private float m_joint2Length;
 
         [SerializeField]
+        private float m_joint1RestAngle;
+
+        [SerializeField]
+        private float m_joint2RestAngle;
+
+        private float m_joint1TargetAngle;
+        private float m_joint2TargetAngle;
+
+        public float CurrentJoint1Angle => Mathf.LerpAngle(m_joint1RestAngle, m_joint1TargetAngle, m_restTargetInterpolate);
+        public float CurrentJoint2Angle => Mathf.LerpAngle(m_joint2RestAngle, m_joint2TargetAngle, m_restTargetInterpolate);
+
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float m_restTargetInterpolate = 0f;
+
+        [SerializeField]
         private RotationConstraint m_rotationConstraint;
+
+
 
         private enum RotationConstraint
         {
@@ -33,12 +51,6 @@ namespace Ricercar.InverseKinematics
 
         public float MaxLength => m_joint1Length + m_joint2Length;
 
-        [SerializeField]
-        private float m_joint1Angle;
-        [SerializeField]
-        private float m_joint2Angle;
-
-
         private Vector2 m_target;
 
         public void SetTarget(Vector2 target)
@@ -46,14 +58,16 @@ namespace Ricercar.InverseKinematics
             m_target = target;
         }
 
+        public void SetRestTargetLerp(float t)
+        {
+            m_restTargetInterpolate = Mathf.Clamp01(t);
+        }
+
         [Button]
         private void FlipAngles()
         {
-            m_joint1Angle = -(m_joint1Angle - 180f);
-            m_joint2Angle *= -1f;
-
-            //m_joint2Angle = -m_joint2Angle;
-            //m_joint1Angle -= m_joint2Angle;
+            m_joint1TargetAngle = -(m_joint1TargetAngle - 180f);
+            m_joint2TargetAngle *= -1f;
         }
 
         /// <summary>
@@ -76,8 +90,8 @@ namespace Ricercar.InverseKinematics
             // If not, we stretch as far as possible
             if (distanceToTarget > MaxLength)
             {
-                m_joint1Angle = atan;
-                m_joint2Angle = 0f;
+                m_joint1TargetAngle = atan;
+                m_joint2TargetAngle = 0f;
             }
             else
             {
@@ -88,8 +102,8 @@ namespace Ricercar.InverseKinematics
                 float angle1 = Mathf.Acos(cosAngle1) * Mathf.Rad2Deg;
 
                 // So they work in Unity reference frame
-                m_joint1Angle = atan - angle0;
-                m_joint2Angle = 180f - angle1;
+                m_joint1TargetAngle = atan - angle0;
+                m_joint2TargetAngle = 180f - angle1;
             }
 
             if (m_rotationConstraint == RotationConstraint.CLOCKWISE)
@@ -99,13 +113,11 @@ namespace Ricercar.InverseKinematics
         /// <summary>
         /// Compute the final destination given a series of angles.
         /// </summary>
-        public Vector2 RunForwardKinematics(bool debug = false)
+        public Vector2 RunForwardKinematics(float angle1, float angle2, bool debug = false)
         {
             float angleOffset = m_rotationConstraint == RotationConstraint.ANTICLOCKWISE ? -transform.eulerAngles.z : transform.eulerAngles.z;
             float angle = 0f;
             Vector2 previousPosition = transform.position;
-
-            Gizmos.color = Color.green;
 
             if (debug)
                 Gizmos.DrawSphere(previousPosition, 0.1f);
@@ -124,8 +136,8 @@ namespace Ricercar.InverseKinematics
                 previousPosition = nextPosition;
             }
 
-            CalculateJoint(m_joint1Angle, m_joint1Length);
-            CalculateJoint(m_joint2Angle, m_joint2Length);
+            CalculateJoint(angle1, m_joint1Length);
+            CalculateJoint(angle2, m_joint2Length);
 
             if (debug)
                 Gizmos.DrawSphere(previousPosition, 0.1f);
@@ -139,13 +151,20 @@ namespace Ricercar.InverseKinematics
             Gizmos.color = Color.blue;
             Gizmos.DrawSphere(m_target, 0.2f);
 
-            Handles.color = (MaxLength >= Vector2.Distance((Vector2)transform.position, m_target)) ? Color.green : Color.red;
+            Handles.color = (MaxLength >= Vector2.Distance(transform.position, m_target)) ? Color.green : Color.red;
             Handles.DrawWireDisc(transform.position, Vector3.back, MaxLength);
 
             Handles.color = Handles.color.SetAlpha(0.1f);
             Handles.DrawSolidDisc(transform.position, Vector3.back, MaxLength);
 
-            RunForwardKinematics(debug: true);
+            Gizmos.color = Color.red;
+            RunForwardKinematics(CurrentJoint1Angle, CurrentJoint2Angle, debug: true);
+
+            if (EditorApplication.isPlaying)
+            {
+                Gizmos.color = Color.green;
+                RunForwardKinematics(m_joint1TargetAngle, m_joint2TargetAngle, debug: true);
+            }
         }
 #endif
     }

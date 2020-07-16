@@ -21,6 +21,11 @@ namespace Ricercar.InverseKinematics
         private bool m_hasGroundTarget = false;
         public bool HasGroundTarget => m_hasGroundTarget;
 
+        [SerializeField]
+        [Range(0f, 1f)]
+        [OnValueChanged("SetInterpolation")]
+        private float m_restTargetInterpolate = 0f;
+
         public void TryLand()
         {
             RaycastForGroundTargets();
@@ -44,6 +49,12 @@ namespace Ricercar.InverseKinematics
 
             m_legOneGroundTarget = leftHit.point;
             m_legTwoGroundTarget = rightHit.point;
+        }
+
+        private void SetInterpolation()
+        {
+            m_legOne.SetRestTargetLerp(m_restTargetInterpolate);
+            m_legTwo.SetRestTargetLerp(m_restTargetInterpolate);
         }
 
         //private void OnDrawGizmosSelected()
