@@ -107,12 +107,18 @@ namespace Ricercar.Character
             if (!m_hasPilot)
                 return;
 
-            m_currentAim = m_input.GetAimDirection(m_transform.position, m_camera);
+            bool setAim = m_camera != null;
+
+            if (setAim)
+                m_currentAim = m_input.GetAimDirection(m_transform.position, m_camera);
+
             m_currentMovement = m_input.MoveDirection;
 
             for (int i = 0; i < m_gimbals.Length; i++)
             {
-                m_gimbals[i].SetAim(m_currentAim);
+                if (setAim)
+                    m_gimbals[i].SetAim(m_currentAim);
+
                 m_gimbals[i].SetMovement(m_currentMovement);
             }
         }
