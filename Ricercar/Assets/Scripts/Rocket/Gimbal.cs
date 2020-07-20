@@ -12,7 +12,6 @@ namespace Ricercar.Character
 
         protected Vector2 m_currentAim;
 
-        [SerializeField]
         protected Vector2 m_desiredMovement = Vector2.zero;
         protected Vector2 m_currentGravity;
 

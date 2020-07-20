@@ -55,20 +55,42 @@ namespace Ricercar.InverseKinematics
 
         private void SetInterpolation()
         {
-            m_legOne.SetRestTargetLerp(m_restTargetInterpolate);
-            m_legTwo.SetRestTargetLerp(m_restTargetInterpolate);
+            m_legOne.LerpFromRest(m_restTargetInterpolate);
+            m_legTwo.LerpFromRest(m_restTargetInterpolate);
         }
 
-        //private void OnDrawGizmosSelected()
-        //{
-        //    if (!m_hasGroundTarget)
-        //        return;
+        public void LerpFromRestAngle1(float t)
+        {
+            m_legOne.LerpFromRestAngle1(t);
+            m_legTwo.LerpFromRestAngle1(t);
+        }
 
-        //    Gizmos.color = Color.red;
+        public void LerpFromRestAngle2(float t)
+        {
+            m_legOne.LerpFromRestAngle2(t);
+            m_legTwo.LerpFromRestAngle2(t);
+        }
 
-        //    Gizmos.DrawSphere(m_legOneGroundTarget, 0.3f);
-        //    Gizmos.DrawSphere(m_legTwoGroundTarget, 0.3f);
-        //}
+        public void LerpFromRestLength(float t)
+        {
+            m_legOne.LerpFromRestLength(t);
+            m_legTwo.LerpFromRestLength(t);
+        }
+
+
+        public void DrawGizmos()
+        {
+            //if (!m_hasGroundTarget)
+            //    return;
+
+            //Gizmos.color = Color.red;
+
+            //Gizmos.DrawSphere(m_legOneGroundTarget, 0.3f);
+            //Gizmos.DrawSphere(m_legTwoGroundTarget, 0.3f);
+
+            m_legOne.DrawGizmos();
+            m_legTwo.DrawGizmos();
+        }
 
     }
 }

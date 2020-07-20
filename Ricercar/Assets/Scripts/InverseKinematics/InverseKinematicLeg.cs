@@ -24,6 +24,12 @@ namespace Ricercar.InverseKinematics
         private float m_joint2Length;
 
         [SerializeField]
+        private float m_joint1RestLength;
+
+        [SerializeField]
+        private float m_joint2RestLength;
+
+        [SerializeField]
         private float m_joint1RestAngle;
 
         [SerializeField]
@@ -32,10 +38,15 @@ namespace Ricercar.InverseKinematics
         private float m_joint1TargetAngle;
         private float m_joint2TargetAngle;
 
-        public float CurrentJoint1Angle => Mathf.LerpAngle(m_joint1RestAngle, m_joint1TargetAngle, m_restTargetInterpolate);
-        public float CurrentJoint2Angle => Mathf.LerpAngle(m_joint2RestAngle, m_joint2TargetAngle, m_restTargetInterpolate);
+        public float CurrentJoint1Angle => Mathf.LerpAngle(m_joint1RestAngle, m_joint1TargetAngle, m_restAngle1Interpolate);
+        public float CurrentJoint2Angle => Mathf.LerpAngle(m_joint2RestAngle, m_joint2TargetAngle, m_restAngle2Interpolate);
         public float TargetJoint1Angle => m_joint1TargetAngle;
         public float TargetJoint2Angle => m_joint2TargetAngle;
+
+        public float CurrentJoint1Length => Mathf.LerpAngle(m_joint1RestLength, m_joint1Length, m_restLengthInterpolate);
+        public float CurrentJoint2Length => Mathf.LerpAngle(m_joint2RestLength, m_joint2Length, m_restLengthInterpolate);
+        public float TargetJoint1Length => m_joint1Length;
+        public float TargetJoint2Length => m_joint2Length;
 
         public float this[int i]
         {
@@ -52,7 +63,15 @@ namespace Ricercar.InverseKinematics
 
         [SerializeField]
         [Range(0f, 1f)]
-        private float m_restTargetInterpolate = 0f;
+        private float m_restAngle1Interpolate = 0f;
+
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float m_restAngle2Interpolate = 0f;
+
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float m_restLengthInterpolate = 0f;
 
         [SerializeField]
         private RotationConstraint m_rotationConstraint;
@@ -74,9 +93,26 @@ namespace Ricercar.InverseKinematics
             m_target = target;
         }
 
-        public void SetRestTargetLerp(float t)
+        public void LerpFromRest(float t)
         {
-            m_restTargetInterpolate = Mathf.Clamp01(t);
+            LerpFromRestAngle1(t);
+            LerpFromRestAngle2(t);
+            LerpFromRestLength(t);
+        }
+
+        public void LerpFromRestAngle1(float t)
+        {
+            m_restAngle1Interpolate = Mathf.Clamp01(t);
+        }
+
+        public void LerpFromRestAngle2(float t)
+        {
+            m_restAngle2Interpolate = Mathf.Clamp01(t);
+        }
+
+        public void LerpFromRestLength(float t)
+        {
+            m_restLengthInterpolate = Mathf.Clamp01(t);
         }
 
         [Button]
@@ -129,7 +165,7 @@ namespace Ricercar.InverseKinematics
         /// <summary>
         /// Compute the final destination given a series of angles.
         /// </summary>
-        public Vector2 RunForwardKinematics(float angle1, float angle2, bool debug = false)
+        public Vector2 RunForwardKinematics(float angle1, float angle2, float length1, float length2, bool debug = false)
         {
             float angleOffset = m_rotationConstraint == RotationConstraint.ANTICLOCKWISE ? -transform.eulerAngles.z : transform.eulerAngles.z;
             float angle = 0f;
@@ -152,8 +188,8 @@ namespace Ricercar.InverseKinematics
                 previousPosition = nextPosition;
             }
 
-            CalculateJoint(angle1, m_joint1Length);
-            CalculateJoint(angle2, m_joint2Length);
+            CalculateJoint(angle1, length1);
+            CalculateJoint(angle2, length2);
 
             if (debug)
                 Gizmos.DrawSphere(previousPosition, 0.1f);
@@ -162,24 +198,24 @@ namespace Ricercar.InverseKinematics
         }
 
 #if UNITY_EDITOR
-        private void OnDrawGizmosSelected()
+        public void DrawGizmos()
         {
-            Gizmos.color = Color.blue;
-            Gizmos.DrawSphere(m_target, 0.2f);
+            //Gizmos.color = Color.blue;
+            //Gizmos.DrawSphere(m_target, 0.2f);
 
-            Handles.color = (MaxLength >= Vector2.Distance(transform.position, m_target)) ? Color.green : Color.red;
-            Handles.DrawWireDisc(transform.position, Vector3.back, MaxLength);
+            //Handles.color = (MaxLength >= Vector2.Distance(transform.position, m_target)) ? Color.green : Color.red;
+            //Handles.DrawWireDisc(transform.position, Vector3.back, MaxLength);
 
-            Handles.color = Handles.color.SetAlpha(0.1f);
-            Handles.DrawSolidDisc(transform.position, Vector3.back, MaxLength);
+            //Handles.color = Handles.color.SetAlpha(0.1f);
+            //Handles.DrawSolidDisc(transform.position, Vector3.back, MaxLength);
 
             Gizmos.color = Color.red;
-            RunForwardKinematics(CurrentJoint1Angle, CurrentJoint2Angle, debug: true);
+            RunForwardKinematics(CurrentJoint1Angle, CurrentJoint2Angle, CurrentJoint1Length, CurrentJoint2Length, debug: true);
 
             if (EditorApplication.isPlaying)
             {
-                Gizmos.color = Color.green;
-                RunForwardKinematics(m_joint1TargetAngle, m_joint2TargetAngle, debug: true);
+                Gizmos.color = Color.green.SetAlpha(0.3f);
+                RunForwardKinematics(m_joint1TargetAngle, m_joint2TargetAngle, m_joint1Length, m_joint2Length, debug: true);
             }
         }
 #endif
