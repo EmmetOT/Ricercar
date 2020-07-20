@@ -11,141 +11,66 @@ namespace Ricercar.Gravity
 {
     public static class GravityInteraction
     {
-        public static string[] s_layerNames;
-        public static int[] s_layerIndices;
-
-        private const int MAX_LAYERS = 32;
-        private static int[] m_gravityInteractions = new int[MAX_LAYERS];
-        private static string[] m_layerNames = new string[MAX_LAYERS];
-
-        private const string PLAYER_PREFS_INTERACTIONS_NAME = "GravityInteractions";
-        private const string PLAYER_PREFS_LAYER_NAMES = "GravityLayerNames";
-
-#if UNITY_EDITOR
-
-        public static void Load()
+        private static GravityLayerData m_data;
+        public static GravityLayerData Data
         {
-            for (int i = 0; i < MAX_LAYERS; i++)
-                m_gravityInteractions[i] = PlayerPrefs.GetInt(PLAYER_PREFS_INTERACTIONS_NAME + i, 0);
+            get
+            {
+                if (m_data == null)
+                    LoadData();
 
-            for (int i = 0; i < MAX_LAYERS; i++)
-                m_layerNames[i] = PlayerPrefs.GetString(PLAYER_PREFS_LAYER_NAMES + i, "");
-
-            RefreshPublicArrays();
+                return m_data;
+            }
         }
 
-        public static void Save()
-        {
-            for (int i = 0; i < MAX_LAYERS; i++)
-                PlayerPrefs.SetInt(PLAYER_PREFS_INTERACTIONS_NAME + i, m_gravityInteractions[i]);
+        private static string DATA_PATH = "Assets/Data/Resources/Gravity Layer Data.asset";
 
-            for (int i = 0; i < MAX_LAYERS; i++)
-                PlayerPrefs.SetString(PLAYER_PREFS_LAYER_NAMES + i, m_layerNames[i]);
+        public static void LoadData()
+        {
+            m_data = AssetDatabase.LoadAssetAtPath<GravityLayerData>(DATA_PATH);
         }
+
 
         [UnityEditor.Callbacks.DidReloadScripts]
         private static void OnScriptsReloaded()
         {
-            AssemblyReloadEvents.beforeAssemblyReload += BeforeReload;
             AssemblyReloadEvents.afterAssemblyReload += AfterReload;
-        }
-
-        private static void BeforeReload()
-        {
-            Save();
         }
 
         private static void AfterReload()
         {
-            Load();
+            RefreshPublicArrays();
         }
-#endif
+
+        public static string[] s_layerNames;
+        public static int[] s_layerIndices;
 
         public static void RefreshPublicArrays()
         {
             int count = 0;
-            for (int i = 0; i < MAX_LAYERS; i++)
-            {
-                if (!m_layerNames[i].IsNullOrEmpty())
-                {
+            foreach (string layerName in Data.LayerNames)
+                if (!layerName.IsNullOrEmpty())
                     ++count;
-                }
-            }
 
             s_layerNames = new string[count];
             s_layerIndices = new int[count];
 
             int index = 0;
-            for (int i = 0; i < MAX_LAYERS; i++)
+            foreach (string layerName in Data.LayerNames)
             {
-                if (!m_layerNames[i].IsNullOrEmpty())
-                {
-                    s_layerNames[index] = index + ": " + m_layerNames[i];
-                    s_layerIndices[index] = index;
-                    ++index;
-                }
+                s_layerNames[index] = index + ": " + layerName;
+                s_layerIndices[index] = index;
+                ++index;
             }
         }
 
-        public static string LayerToName(int index) => m_layerNames[index];
+        public static string LayerToName(int index) => Data.LayerToName(index);
+        public static IEnumerable<string> LayerNames => Data.LayerNames;
+        public static void SetLayerName(int index, string name) => Data.SetLayerName(index, name);
+        public static int NameToLayer(string layerName) => Data.NameToLayer(layerName);
+        public static bool GetIgnoreLayerInteraction(int layerA, int layerB) => Data.GetIgnoreLayerInteraction(layerA, layerB);
 
-        public static IEnumerable<string> LayerNames
-        {
-            get
-            {
-                for (int i = 0; i < m_layerNames.Length; i++)
-                {
-                    if (!m_layerNames.IsNullOrEmpty())
-                        yield return m_layerNames[i];
-                }
-            }
-        }
-
-        public static void SetLayerName(int index, string name)
-        {
-            m_layerNames[index] = name;
-            Save();
-            RefreshPublicArrays();
-        }
-
-        public static int NameToLayer(string layerName)
-        {
-            for (int i = 0; i < m_layerNames.Length; i++)
-                if (m_layerNames.Equals(layerName))
-                    return i;
-
-            return -1;
-        }
-
-        public static bool GetIgnoreLayerInteraction(int layerA, int layerB)
-        {
-            return ((1 << layerA) & m_gravityInteractions[layerB]) != 0;
-        }
-
-        public static void IgnoreLayerInteraction(int layerA, int layerB, bool val)
-        {
-            int layerAMask = 1 << layerA;
-            int layerBMask = 1 << layerB;
-
-            if (val)
-            {
-                m_gravityInteractions[layerA] = m_gravityInteractions[layerA] | layerBMask;
-                m_gravityInteractions[layerB] = m_gravityInteractions[layerB] | layerAMask;
-            }
-            else
-            {
-                m_gravityInteractions[layerA] = m_gravityInteractions[layerA] & ~layerBMask;
-                m_gravityInteractions[layerB] = m_gravityInteractions[layerB] & ~layerAMask;
-            }
-
-            Save();
-        }
-
-        public static int[] GetGravityInteractionsArray()
-        {
-            int[] copy = new int[MAX_LAYERS];
-            m_gravityInteractions.CopyTo(copy, 0);
-            return copy;
-        }
+        public static void IgnoreLayerInteraction(int layerA, int layerB, bool val) => Data.IgnoreLayerInteraction(layerA, layerB, val);
+        public static int[] GetGravityInteractionsArray() => Data.GetGravityInteractionsArray();
     }
 }

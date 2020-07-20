@@ -11,9 +11,11 @@ namespace Ricercar.InverseKinematics
     {
         [SerializeField]
         private InverseKinematicLeg m_legOne;
+        public InverseKinematicLeg LegOne => m_legOne;
 
         [SerializeField]
         private InverseKinematicLeg m_legTwo;
+        public InverseKinematicLeg LegTwo => m_legTwo;
 
         private Vector2 m_legOneGroundTarget;
         private Vector2 m_legTwoGroundTarget;

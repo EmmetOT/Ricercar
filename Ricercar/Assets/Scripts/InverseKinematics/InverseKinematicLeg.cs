@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using NaughtyAttributes;
 using UnityEngine.UIElements;
+using System;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -33,6 +34,21 @@ namespace Ricercar.InverseKinematics
 
         public float CurrentJoint1Angle => Mathf.LerpAngle(m_joint1RestAngle, m_joint1TargetAngle, m_restTargetInterpolate);
         public float CurrentJoint2Angle => Mathf.LerpAngle(m_joint2RestAngle, m_joint2TargetAngle, m_restTargetInterpolate);
+        public float TargetJoint1Angle => m_joint1TargetAngle;
+        public float TargetJoint2Angle => m_joint2TargetAngle;
+
+        public float this[int i]
+        {
+            get
+            {
+                if (i == 0)
+                    return TargetJoint1Angle;
+                else if (i == 1)
+                    return TargetJoint2Angle;
+                
+                throw new IndexOutOfRangeException();
+            }
+        }
 
         [SerializeField]
         [Range(0f, 1f)]

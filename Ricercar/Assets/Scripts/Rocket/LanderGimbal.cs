@@ -11,10 +11,22 @@ namespace Ricercar.Character
         [SerializeField]
         private InverseKinematicLegSystem m_legSystem;
 
+        [SerializeField]
+        private Transform[] m_legOne;
+
+        [SerializeField]
+        private Transform[] m_legTwo;
+
         private void LateUpdate()
         {
             m_transform.up = -m_controller.CurrentGravityWithoutWarp.normalized;
             m_legSystem.TryLand();
+        }
+
+        [Button]
+        private void TestRealLegs()
+        {
+
         }
     }
 }
