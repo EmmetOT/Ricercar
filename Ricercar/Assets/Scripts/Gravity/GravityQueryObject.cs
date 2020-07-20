@@ -38,6 +38,11 @@ namespace Ricercar.Gravity
             m_field.DeregisterAttractor(this);
         }
 
+        public void SetTransform(Transform transform)
+        {
+            m_transform = transform;
+        }
+
         public void SetGravity(Vector2 gravity)
         {
             m_currentGravity = gravity;

@@ -9,7 +9,7 @@ namespace Ricercar.Gravity
 {
     public class GravityMap : ScriptableObject
     {
-        public const int SIZE = 2048;
+        public const int SIZE = 512;
 
         [SerializeField]
         [ReadOnly]

@@ -11,13 +11,13 @@ namespace Ricercar.Gravity
 {
     public class GravityVisualizer : MonoBehaviour
     {
-        private const string EFFECT_SCALAR_PROPERTY = "_EffectScalar";
-        private const string GRID_SCALE_PROPERTY = "_GridScale";
-        private const string NEUTRAL_GRAVITY_COLOUR_PROPERTY = "_NeutralGravityColour";
-        private const string POSITIVE_GRAVITY_COLOUR_PROPERTY = "_PositiveGravityColour";
-        private const string NEGATIVE_GRAVITY_COLOUR_PROPERTY = "_NegativeGravityColour";
-        private const string GRAVITY_AURA_SIZE_PROPERTY = "_GravityAuraSize";
-        private const string ROTATION_PROPERTY = "_CameraRotationDegrees";
+        private static readonly int EFFECT_SCALAR_PROPERTY = Shader.PropertyToID("_EffectScalar");
+        private static readonly int GRID_SCALE_PROPERTY = Shader.PropertyToID("_GridScale");
+        private static readonly int NEUTRAL_GRAVITY_COLOUR_PROPERTY = Shader.PropertyToID("_NeutralGravityColour");
+        private static readonly int POSITIVE_GRAVITY_COLOUR_PROPERTY = Shader.PropertyToID("_PositiveGravityColour");
+        private static readonly int NEGATIVE_GRAVITY_COLOUR_PROPERTY = Shader.PropertyToID("_NegativeGravityColour");
+        private static readonly int GRAVITY_AURA_SIZE_PROPERTY = Shader.PropertyToID("_GravityAuraSize");
+        private static readonly int ROTATION_PROPERTY = Shader.PropertyToID("_CameraRotationDegrees");
 
         private const string IS_DISTORTION_MAP_PROPERTY = "IS_DISTORTION_MAP";
 
@@ -30,10 +30,6 @@ namespace Ricercar.Gravity
         [SerializeField]
         [BoxGroup("Components")]
         private GravityField m_gravityField;
-
-        [SerializeField]
-        [BoxGroup("Components")]
-        private Transform m_followTransform;
 
         private Transform m_transform;
 
@@ -187,8 +183,11 @@ namespace Ricercar.Gravity
             m_rawImage.material = m_materialInstance;
 
             m_transform.hasChanged = false;
+        }
 
-            m_gravityQuery = new GravityQueryObject(m_gravityField, m_cameraLayer, m_followTransform);
+        public void SetGravityQuery(GravityQueryObject query)
+        {
+            m_gravityQuery = query;
         }
 
         private void OnEnable()

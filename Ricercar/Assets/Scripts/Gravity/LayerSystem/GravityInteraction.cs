@@ -11,6 +11,8 @@ namespace Ricercar.Gravity
 {
     public static class GravityInteraction
     {
+        private static string DATA_PATH = "Assets/Data/Resources/Gravity Layer Data.asset";
+
         private static GravityLayerData m_data;
         public static GravityLayerData Data
         {
@@ -22,8 +24,6 @@ namespace Ricercar.Gravity
                 return m_data;
             }
         }
-
-        private static string DATA_PATH = "Assets/Data/Resources/Gravity Layer Data.asset";
 
         public static void LoadData()
         {
@@ -58,6 +58,9 @@ namespace Ricercar.Gravity
             int index = 0;
             foreach (string layerName in Data.LayerNames)
             {
+                if (layerName.IsNullOrEmpty())
+                    continue;
+
                 s_layerNames[index] = index + ": " + layerName;
                 s_layerIndices[index] = index;
                 ++index;

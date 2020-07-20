@@ -30,6 +30,9 @@ namespace Ricercar
         [ShowIf("IsFollowingAttractor")]
         private SimpleRigidbodyAttractor m_followAttractor;
 
+        [SerializeField]
+        private GravityVisualizer m_visualizer;
+
         //[SerializeField]
         //[ShowIf("IsFollowingWarpGimbal")]
         //private WarpGimbal m_warpGimbal;
@@ -66,6 +69,7 @@ namespace Ricercar
         private void Start()
         {
             m_gravityQuery = new GravityQueryObject(m_gravityField, m_cameraLayer, m_followTransform);
+            m_visualizer.SetGravityQuery(m_gravityQuery);
         }
 
         private void LateUpdate()
